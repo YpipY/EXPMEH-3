@@ -7,6 +7,18 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+
+zoo::na.spline()
+Lmax
+L 
+RR
+TT
+DET
+grid.expand
+
+library(pacman)
+p_load(gridExtra,lme4,evobiR,dplyr,stringr)
 ```
 
 ## Analysing Heart Rate and Respiration data
@@ -44,8 +56,88 @@ NB: For this exercise, you will need to do something very similiar to what you'v
 - Run crqa on heart rate and respiration data (find parameters, run crqa)
 - Does this tell you more than just eyeballing the plots?
 
+```{r}
+
+ex = read.csv("Assignment 4/data/CleanData/Study2_G10_T1_Conversation.csv")
+
+plot(ex$time,ex$HR1)
+plot(ex$time,ex$HR2)
+
+grid.arrange(plot1, plot2, ncol=2)
+
+
+
+ex$time 
+
+data.frame(Matrix(ncol = ))
+
+colnames(ex)
+
+ex['time']
+
+for (col in colnames(ex)) {
+  print(col)
+}
+
+ex[[1]]
+```
+
+
 ### Systematically pre-process the data
 - Loop through all the files (either with a loop or with a function), check which files should be excluded, if any, and save the pre-processed time-series. Tip: plot and visually inspect the data to figure out which should be excluded.
+```{r systematic pre-processing}
+
+
+clean_file = function(filename) {
+  cat("\n\n",filename,sep = '')
+  currentData = read.csv(paste(path, filename, sep = "")) # Loading data
+  
+  # Loop for each column
+  for (col in colnames(currentData)[2:length(currentData)]) {
+    # A temporary variable to hold the outliers
+    out = ifelse(scale(currentData[[col]]) > 2.5 |
+                 scale(currentData[[col]]) < -2.5 |
+                 currentData[[col]] == -10,
+                 currentData[[col]], NA)
+    # Removing the outliers 
+    currentData[[col]] = ifelse(scale(currentData[[col]]) > sd(currentData[[col]])*2.5 |
+                                scale(currentData[[col]]) < sd(currentData[[col]])*-2.5 |
+                                currentData[[col]] == -10, 
+                                mean(currentData[[col]]), currentData[[col]])
+    # Printing how many percentages of the data that was removed
+    perc = round(length(na.omit(out))/length(currentData[[1]])*100,2)
+    cat("\nRemoved ",perc, "% from ", col,sep='')
+    
+    currentData[[col]] = scale(currentData[[col]]) # Scaling
+  }
+  
+  # Creating new dataframe
+  rows = length(SlidingWindow("mean", currentData[[1]], 200, 100))
+  cols = length(currentData)
+  cleanData = data.frame(matrix(nrow = rows, ncol = cols)) 
+  colnames(cleanData) = colnames(currentData)
+  # Downsizing each column to the new dataframe
+  for (col in colnames(cleanData)) {
+    cleanData[[col]] = SlidingWindow("mean", currentData[[col]], 200, 100)  
+  }
+
+  return(cleanData)
+}
+
+
+path = "C:/Users/slmoni/Documents/Uni/Experimental Methods III/EXPMETH3/Assignment 4/data/CleanData/" # Set any path here
+
+
+for (file in list.files(path = path)) {
+  name = str_replace(file, ".csv","_clean")
+  eval(parse(text=paste(name," = clean_file('",file,"')",sep='')))
+}
+
+View(Study1_G2_T3_SelfPaced_clean)
+
+```
+
+
 - Run crqa on all the pre-processed time-series and save the output (don't forget to add columns with study, group, condition and trial). Tip: remember to first assess optimal parameters (dimensions, delay, radius) across all timeseries. Tip: it will often fail, just take whatever parameters you get, select optimal across timeseries parameters and run crqa on all timeseries with those. Tip: double check the rr. When I ran the loop, I got very low rr, so I adjusted the radius until the average of rr across all pairs was approx. 4%.
 
 ### Creating controls: shuffled controls
