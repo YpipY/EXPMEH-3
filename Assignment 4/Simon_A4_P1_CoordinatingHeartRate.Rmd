@@ -8,7 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-setwd("C:/Users/slmoni/Documents/Uni/Experimental Methods III/R-stuff/Assignment 4/data/CleanData/")
+setwd("C:/Users/slmoni/Documents/Uni/Experimental Methods III/EXPMEH3/Assignment 4/data/CleanData/")
 
 zoo::na.spline()
 Lmax
