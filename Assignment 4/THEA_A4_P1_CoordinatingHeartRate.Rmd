@@ -128,6 +128,7 @@ library(groupdata2)
 library(ggplot2)
 library(tidyverse)
 library(purrr)
+library(stringr)
 ```
 
 ```{r}
@@ -440,11 +441,18 @@ G2_T2: exclude Resp2
 ```{r}
 
 
-
+#create function that preprocesses all data
 prep <- function(filename) {
   #read data
   data <- read.csv(file = paste(path, filename, sep = ""), sep = ",", header = TRUE)
   
+  # parse filename
+  meta = str_extract_all(filename, "\\d+")
+  cond = substr(filename, 14, 19)
+  study = as.numeric(meta[[1]][1])
+  pair = as.numeric(meta[[1]][2])
+  trial = as.numeric(meta [[1]][3])
+
   #downsample
   down = NULL 
   
@@ -457,27 +465,44 @@ prep <- function(filename) {
       Resp1 = mean(Resp1, na.rm = T),
       Resp2 = mean(Resp2, na.rm = T))
   
+  #remove outliers for heart rate
+  down$HR1 <- removeOuts(down$HR1, threshold)
+  down$HR2 <- removeOuts(down$HR2, threshold)
+
+  #remove outliers for respiration
+  down$Resp1 <- removeOuts(down$Resp1, threshold)
+  down$Resp2 <- removeOuts(down$Resp2, threshold)
   
-  #remove 
+  #scale the signals to be center them, so we can compare 
+  down$HR1 <- scale(down$HR1)
+  down$HR2 <- scale(down$HR2)
+  down$Resp1 <- scale(down$Resp1)
+  down$Resp2 <- scale(down$Resp2)
   
-  
-  
-  
-  
-  
-  output = data.frame(down)
+  #create output
+  output = data.frame(pair, study, cond, trial, down$time, down$HR1, down$HR2, down$Resp1, down$Resp2)
   
   return(output)
   
 }
 
-filename = "Study1_G1_T2_TurnTaking.csv"
-j <- read.csv(file = paste(path, filename, sep = ""), sep = ",", header = TRUE)
-j
+#filename = "Study1_G1_T1_Synchronous.csv"
 
-
+#testing the function 
 k <- prep("Study1_G1_T2_TurnTaking.csv")
 k
+
+#preprocess all files in loop
+prep_path = "/Users/thearolskovsloth/Documents/3. SEMESTER/Experimental Methods 3/Portfolios/Portfolio 7/prep/"
+
+for (d in files) {
+  p = prep(d)
+  write.csv(p, file = paste(prep_path,"prep_",d))
+  
+}
+
+
+
 
 ```
 
