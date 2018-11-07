@@ -129,6 +129,7 @@ library(ggplot2)
 library(tidyverse)
 library(purrr)
 library(stringr)
+library(crqa)
 ```
 
 ```{r}
@@ -515,20 +516,20 @@ for (d in files) {
 path_prep = "/Users/thearolskovsloth/EXPMETH3/Assignment 4/Thea/prep/"
 
 loop_plot_HR_prep <- function(filename) {
-  data <- read.csv(file = paste(path_prep,filename, sep = ""), sep = ",", header = TRUE) 
+  data <- read.csv(file = paste("/Users/thearolskovsloth/EXPMETH3/Assignment 4/Thea/prep/ ",filename, sep = ""), sep = ",", header = TRUE) 
   plot = ggplot(data = data, aes(x = time)) + geom_line(aes(y = down.HR1, colour = "down.HR1")) + geom_line(aes(y = down.HR2, colour = "down.HR2")) + labs(title= filename, y = "Heart Rate")
   
   return(plot)
   
 }
 
-filename <- "prep_Study1_G1_T1_Synchronous.csv"
+loop_plot_HR_prep("prep_Study1_G1_T1_Synchronous.csv")
 
-data2 <- read.delim(file = paste("/Users/thearolskovsloth/EXPMETH3/Assignment 4/Thea/prep/",filename, sep = ""), sep = ",", header = TRUE) 
+data2 <- read.delim(file = paste("/Users/thearolskovsloth/EXPMETH3/Assignment 4/Thea/prep/ ",filename, sep = ""), sep = ",", header = TRUE) 
  
  #HR
 
-theaspath_prep_HR = "/Users/thearolskovsloth/EXPMETH3/Assignment 4/Thea/prep/plotz_prep_HR/"
+theaspath_prep_HR = "/Users/thearolskovsloth/EXPMETH3/Assignment 4/Thea/plotz_prep_HR/"
 files_prep <- list.files(path = path_prep)
 
 for (d in files_prep) {
@@ -570,9 +571,78 @@ Tip: remember to first assess optimal parameters (dimensions, delay, radius) acr
 
 ```{r}
 setwd("~/EXPMETH3/Assignment 4/Thea/prep")
+#crqa(d$down.HR1, d$down.HR2, delay = 1, embed = 2, normalize = 0, rescale = 0, radius = 2, mindiagline = 2, minvertline = 2, tw = 1, whiteline = FALSE, recpt = F, side = 3, checkl = 1)
+d <- read.csv("prep_Study1_G2_T1_TurnTaking.csv")
 
-d <- read.csv(" prep_Study1_G2_T1_TurnTaking.csv")
+par = list(lgM = 50, steps = seq(1, 6, 1), radiusspan = 100, radiussample = 40, normalize = 0, rescale = 0, mindiagline = 2, minvertline = 2, tw = 0, whiteline = FALSE, recpt = FALSE, fnnpercent = 10, typeami = "mindip")
 
+ans = optimizeParam(d$down.HR1, d$down.HR2, par, min.rec = 3.5, max.rec = 4.5)
+
+
+Results=crqa(d$down.HR1, d$down.HR2, delay=0, embed=20, radius=0.288, normalize=0, rescale=0, mindiagline = 2, minvertline = 2)
+
+# RR <- Results[[1]]
+# DET <- Results[[2]]
+# maxL <- Results[[4]]
+# L <- Results[[5]]
+# TT <- Results[[9]]
+
+
+RP=Results$RP
+RP = matrix(as.numeric(RP), nrow = ncol(RP))
+cols = c("white","blue4")
+image(RP, xlab = "HR1", ylab = "HR2", col = cols)
+
+
+Profile=drpdfromts(d$down.HR1, d$down.HR2 ,datatype = 'continuous',ws=50,radius=0.288)
+timecourse = round( seq(-5000,5000,100)/1000, digit = 1)
+maxlag = Profile$maxlag/1000
+profile = Profile$profile*100
+Prof=data.frame(profile)
+ggplot(Prof, aes(timecourse,profile))+geom_line()+ geom_vline(xintercept = timecourse[maxlag], colour='red')
+
+
+
+
+setwd("~/Documents/3. SEMESTER/Experimental Methods 3/Portfolios/Portfolio 7/prep/")
+#TIME TO LOOOOOOOP
+
+crqa_path = "/Users/thearolskovsloth/Documents/3. SEMESTER/Experimental Methods 3/Portfolios/Portfolio 7/prep/ "
+  
+recur <- function(filename) {
+  #read data
+  data <- read.csv(file = paste(crqa_path,filename, sep = ""), sep = ",", header = TRUE)
+  
+  # parse filename
+  meta = str_extract_all(filename, "\\d+")
+  cond = substr(filename, 14, 19)
+  study = as.numeric(meta[[1]][1])
+  pair = as.numeric(meta[[1]][2])
+  trial = as.numeric(meta [[1]][3])
+  
+  # analysis
+  par = list(lgM = 50, steps = seq(1, 6, 1), radiusspan = 100, radiussample = 40, normalize = 0, rescale = 0, mindiagline = 2, minvertline = 2, tw = 0, whiteline = FALSE, recpt = FALSE, fnnpercent = 10, typeami = "mindip")
+  
+  ans = optimizeParam(data$down.HR1, data$down.HR2, par, min.rec = 3.5, max.rec = 4.5)
+  
+  Results=crqa(d$down.HR1, d$down.HR2, delay=ans[[3]], embed=ans[[2]], radius=ans[[1]], normalize=0, rescale=0, mindiagline = 2, minvertline = 2)
+  
+  RR <- Results[[1]]
+  DET <- Results[[2]]
+  maxL <- Results[[4]]
+  L <- Results[[5]]
+  TT <- Results[[9]]
+  
+  #create output
+  output = data.frame(pair, study, cond, trial, RR, DET, maxL, L, TT)
+  
+  return(output)
+  
+}
+
+recur("prep_Study1_G2_T1_TurnTaking")
+
+g <- read.csv("prep_Study1_G2_T1_TurnTaking.csv")
 
 
 ```
