@@ -498,7 +498,7 @@ prep_path = "/Users/thearolskovsloth/Documents/3. SEMESTER/Experimental Methods 
 
 for (d in files) {
   p = prep(d)
-  write.csv(p, file = paste(prep_path,"prep_",d))
+  write.csv(p, file = paste(prep_path,"prep_",d, sep = ""))
   
 }
 
@@ -560,7 +560,6 @@ for (d in files_prep) {
 }
 
 
-
 ```
 
 
@@ -570,7 +569,7 @@ Tip: remember to first assess optimal parameters (dimensions, delay, radius) acr
 
 
 ```{r}
-setwd("~/EXPMETH3/Assignment 4/Thea/prep")
+
 #crqa(d$down.HR1, d$down.HR2, delay = 1, embed = 2, normalize = 0, rescale = 0, radius = 2, mindiagline = 2, minvertline = 2, tw = 1, whiteline = FALSE, recpt = F, side = 3, checkl = 1)
 d <- read.csv("prep_Study1_G2_T1_TurnTaking.csv")
 
@@ -604,14 +603,65 @@ ggplot(Prof, aes(timecourse,profile))+geom_line()+ geom_vline(xintercept = timec
 
 
 
-setwd("~/Documents/3. SEMESTER/Experimental Methods 3/Portfolios/Portfolio 7/prep/")
+setwd("/Users/thearolskovsloth/Documents/3. SEMESTER/Experimental Methods 3/Portfolios/Portfolio 7/prep/")
+
 #TIME TO LOOOOOOOP
 
-crqa_path = "/Users/thearolskovsloth/Documents/3. SEMESTER/Experimental Methods 3/Portfolios/Portfolio 7/prep/ "
+
+#OPTIMZING
+
+crqa_path = "/Users/thearolskovsloth/Documents/3. SEMESTER/Experimental Methods 3/Portfolios/Portfolio 7/prep/"
+
+opti <- function(filename) {
+  #read data
+  data <- read.csv(file = paste(crqa_path, filename, sep = ""), sep = ",", header = TRUE)
+  
+  # parse filename
+  meta = str_extract_all(filename, "\\d+")
+  cond = substr(filename, 19, 24)
+  study = as.numeric(meta[[1]][1])
+  pair = as.numeric(meta[[1]][2])
+  trial = as.numeric(meta [[1]][3])
+  
+  # analysis
+  par = list(lgM = 50, steps = seq(1, 6, 1), radiusspan = 200, radiussample = 40, normalize = 0, rescale = 0, mindiagline = 2, minvertline = 2, tw = 0, whiteline = FALSE, recpt = FALSE, fnnpercent = 10, typeami = "mindip")
+  
+  ans = optimizeParam(data$down.HR1, data$down.HR2, par, min.rec = 3.5, max.rec = 4.5)
+  
+  delay=ans[[3]]
+  embed=ans[[2]]
+  radius=ans[[1]]
+  
+   #create output
+  
+  output = data.frame(pair, study, cond, trial, delay, embed, radius)
+  
+  return(output)
+
+}
+
+#test
+c <- opti("prep_Study1_G2_T1_TurnTaking.csv")
+
+
+#Iterate thorugh all
+opti_data <- data.frame()
+
+
+for (d in files_prep) {
+  p = try(expr= opti(d))
+  opti_data = try( expr = rbind(opti_data, p))
+  
+}
+
+
+
+#RECURRANCE
+crqa_path = "/Users/thearolskovsloth/Documents/3. SEMESTER/Experimental Methods 3/Portfolios/Portfolio 7/prep/"
   
 recur <- function(filename) {
   #read data
-  data <- read.csv(file = paste(crqa_path,filename, sep = ""), sep = ",", header = TRUE)
+  data <- read.csv(file = paste(crqa_path, filename, sep = ""), sep = ",", header = TRUE)
   
   # parse filename
   meta = str_extract_all(filename, "\\d+")
@@ -621,11 +671,11 @@ recur <- function(filename) {
   trial = as.numeric(meta [[1]][3])
   
   # analysis
-  par = list(lgM = 50, steps = seq(1, 6, 1), radiusspan = 100, radiussample = 40, normalize = 0, rescale = 0, mindiagline = 2, minvertline = 2, tw = 0, whiteline = FALSE, recpt = FALSE, fnnpercent = 10, typeami = "mindip")
+  par = list(lgM = 50, steps = seq(1, 6, 1), radiusspan = 200, radiussample = 40, normalize = 0, rescale = 0, mindiagline = 2, minvertline = 2, tw = 0, whiteline = FALSE, recpt = FALSE, fnnpercent = 10, typeami = "mindip")
   
   ans = optimizeParam(data$down.HR1, data$down.HR2, par, min.rec = 3.5, max.rec = 4.5)
   
-  Results=crqa(d$down.HR1, d$down.HR2, delay=ans[[3]], embed=ans[[2]], radius=ans[[1]], normalize=0, rescale=0, mindiagline = 2, minvertline = 2)
+  Results=crqa(data$down.HR1, data$down.HR2, delay=[[3]], embed=ans[[2]], radius=ans[[1]], normalize=0, rescale=0, mindiagline = 2, minvertline = 2)
   
   RR <- Results[[1]]
   DET <- Results[[2]]
@@ -640,9 +690,11 @@ recur <- function(filename) {
   
 }
 
-recur("prep_Study1_G2_T1_TurnTaking")
+# filename = "prep_Study1_G3_T3_Synchronous.csv"
+#data <- read.csv(file = paste(crqa_path, filename, sep = ""), sep = ",", header = TRUE)
+# datag <- read.csv(filename)
 
-g <- read.csv("prep_Study1_G2_T1_TurnTaking.csv")
+c <- recur("prep_Study1_G3_T3_Synchronous.csv")
 
 
 ```
@@ -658,6 +710,8 @@ g <- read.csv("prep_Study1_G2_T1_TurnTaking.csv")
  
 ```{r}
 
+
+
 ```
 
 ### TRICKY! Creating controls: surrogate pair controls
@@ -668,6 +722,8 @@ g <- read.csv("prep_Study1_G2_T1_TurnTaking.csv")
  
 ```{r}
 
+
+
 ```
 
 ### Testing effects of conditions
@@ -676,6 +732,8 @@ g <- read.csv("prep_Study1_G2_T1_TurnTaking.csv")
  
  
 ```{r}
+
+
 
 ```
 
