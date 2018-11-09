@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 
-zoo::na.spline()
+?zoo::na.spline()
 Lmax
 L 
 RR
@@ -18,7 +18,8 @@ DET
 grid.expand
 
 library(pacman)
-p_load(gridExtra,lme4,evobiR,dplyr,stringr)
+p_load(gridExtra,lme4,evobiR,dplyr,stringr,dotCall64,crqa,zoo)
+library(tidyverse)
 ```
 
 ## Analysing Heart Rate and Respiration data
@@ -58,7 +59,7 @@ NB: For this exercise, you will need to do something very similiar to what you'v
 
 ```{r}
 
-ex = read.csv("Assignment 4/data/CleanData/Study2_G10_T1_Conversation.csv")
+ex = read.csv("Assignment 4/data/CleanData/Study1_G1_T1_Synchronous.csv")
 
 plot(ex$time,ex$HR1)
 plot(ex$time,ex$HR2)
@@ -85,9 +86,7 @@ ex[[1]]
 
 ### Systematically pre-process the data
 - Loop through all the files (either with a loop or with a function), check which files should be excluded, if any, and save the pre-processed time-series. Tip: plot and visually inspect the data to figure out which should be excluded.
-```{r systematic pre-processing}
-
-
+```{r systematic pre-processing, Laurits}
 clean_file = function(filename) {
   cat("\n\n",filename,sep = '')
   currentData = read.csv(paste(path, filename, sep = "")) # Loading data
@@ -103,7 +102,8 @@ clean_file = function(filename) {
     currentData[[col]] = ifelse(scale(currentData[[col]]) > sd(currentData[[col]])*2.5 |
                                 scale(currentData[[col]]) < sd(currentData[[col]])*-2.5 |
                                 currentData[[col]] == -10, 
-                                mean(currentData[[col]]), currentData[[col]])
+                                NA, currentData[[col]])
+    currentData[[col]] = na.spline(currentData[[col]])
     # Printing how many percentages of the data that was removed
     perc = round(length(na.omit(out))/length(currentData[[1]])*100,2)
     cat("\nRemoved ",perc, "% from ", col,sep='')
@@ -123,8 +123,78 @@ clean_file = function(filename) {
 
   return(cleanData)
 }
+```
+
+```{r systematic pre-processing, using spline}
 
 
+#spline tests
+ex = read.csv("Assignment 4/data/CleanData/Study1_G1_T1_Synchronous.csv")
+
+ex$Resp2 = ifelse(scale(ex$Resp2) > sd(ex$Resp2)*2.5 |
+                                scale(ex$Resp2) < sd(ex$Resp2)*-2.5 |
+                                ex$Resp2 == -10, 
+                                NA, ex$Resp2)
+ex$Resp1 = ifelse(scale(ex$Resp1) > sd(ex$Resp1)*2.5 |
+                                scale(ex$Resp1) < sd(ex$Resp1)*-2.5 |
+                                ex$Resp1 == -10, 
+                                NA, ex$Resp1)
+
+ex$Resp1 = na.spline(ex$Resp1,maxgap=1000)
+
+ex = na.spline(ex,maxgap=5000)
+
+ex<-as.data.frame(ex)
+
+length(na.omit(Study1_G1_T1_Synchronous_clean[,2]))
+length(na.omit(ex[,2]))
+
+?na.spline
+237631
+
+# Cleaning function 
+clean_file = function(filename) {
+  tryCatch({
+  cat("\n\n",filename,sep = '')
+  currentData = read.csv(paste(path, filename, sep = "")) # Loading data
+  
+  # Loop for each column
+  for (col in colnames(currentData)[2:length(currentData)]) {
+    # A temporary variable to hold the outliers
+    out = ifelse(scale(currentData[[col]]) > 2.5 |
+                 scale(currentData[[col]]) < -2.5 |
+                 currentData[[col]] == -10,
+                 currentData[[col]], NA)
+    # Removing the outliers 
+    currentData[[col]] = ifelse(scale(currentData[[col]]) > sd(currentData[[col]])*2.5 |
+                                scale(currentData[[col]]) < sd(currentData[[col]])*-2.5 |
+                                currentData[[col]] == -10, 
+                                NA, currentData[[col]])
+    # Printing how many percentages of the data that was removed
+    perc = round(length(na.omit(out))/length(currentData[[1]])*100,2)
+    cat("\nRemoved ",perc, "% from ", col,sep='')
+    
+    currentData[[col]] = scale(currentData[[col]]) # Scaling
+  }
+  
+  # Replacing outliers with a spline
+  currentData = na.spline(currentData,maxgap=5000)
+  currentData<-as.data.frame(currentData)
+  
+  # Creating new dataframe
+  rows = length(SlidingWindow("mean", currentData[[1]], 200, 100))
+  cols = length(currentData)
+  cleanData = data.frame(matrix(nrow = rows, ncol = cols)) 
+  colnames(cleanData) = colnames(currentData)
+  # Downsizing each column to the new dataframe
+  for (col in colnames(cleanData)) {
+    cleanData[[col]] = SlidingWindow("mean", currentData[[col]], 200, 100)  
+  }
+
+  return(cleanData)
+  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+}
+    
 path = "C:/Users/slmoni/Documents/Uni/Experimental Methods III/EXPMETH3/Assignment 4/data/CleanData/" # Set any path here
 
 
