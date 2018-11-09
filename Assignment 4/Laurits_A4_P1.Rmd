@@ -166,13 +166,23 @@ for (i in seq(1,length(files))) {
                     temp2$emddim,temp2$delay,HRWarn))
 }
 
-ans$Warning = c(0,0,0,0,1,1,2,2,2,0,1,1,1,0,1,1,0,0,0,2,0,0,0,9,1,1,1,1,0,2)
-
 
 respAns = ans %>%
   dplyr::filter(respWarn == 0) %>%
   na.omit()
-mean(rad$respRadius)
+
+mean(respAns$respRadius)
+median(respAns$respDelay)
+median(respAns$respEmddim)
+
+
+HRAns = ans %>%
+  dplyr::filter(HRWarn == 0) %>%
+  na.omit()
+
+mean(HRAns$respRadius)
+median(HRAns$respDelay)
+median(HRAns$respEmddim)
 
 
 Results = crqa(x1, x2, delay=ans$delay, embed=ans$emddim, radius = ans$radius, normalize = 0,                ts1 = rescale = 0, mindiagline = 2,minvertline = 2) 
