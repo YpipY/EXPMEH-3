@@ -48,7 +48,7 @@ NB: For this exercise, you will need to do something very similiar to what you'v
 - Run crqa on heart rate and respiration data (find parameters, run crqa)
 - Does this tell you more than just eyeballing the plots?
 
-```{r}
+```{r introdoctory plotting}
 
 ex = read.csv("CleanData/Study2_G10_T1_Conversation.csv")
 
@@ -129,9 +129,6 @@ for (i in seq_along(my_files)) {
     data[[i]] <- currentData
 }
 
-
-
-for (df in data){print(df$group[1])}
 
 # OLD LOOP USE THE ONE ABOVE
 for (file in list.files(path = path)) {
@@ -228,19 +225,56 @@ image(RP, xlab = "", ylab = "", col = cols)
  - run crqa and save the output. NB. which delay, embed, radius parameters should you use?
  - statistically compare the crqa indexes in real and shuffled pairs
  
-```{r}
-CRQAresultstable = data.frame(matrix(ncol=7,nrow = 0))
+```{r QRCA analysis with shuffled control}
+resultColnames = c("Group", "Condition",
+"RR.HR", "DET.HR", "NRLINE.HR", "maxL.HR", "L.HR", "ENTR.HR", "rENTR.HR", "LAM.HR", "TT.HR",
+"RR.HR.S", "DET.HR.S", "NRLINE.HR.S", "maxL.HR.S", "L.HR.S", "ENTR.HR.S", "rENTR.HR.S", "LAM.HR.S", "TT.HR.S",
+"RR.RE", "DET.RE", "NRLINE.RE", "maxL.RE", "L.RE", "ENTR.RE", "rENTR.RE", "LAM.RE", "TT.RE",
+"RR.RE.S", "DET.RE.S", "NRLINE.RE.S", "maxL.RE.S", "L.RE.S", "ENTR.RE.S", "rENTR.RE.S", "LAM.RE.S", "TT.RE.S")
 
+CRQAresultstable = data.frame(matrix(ncol=38,nrow = 0))
+CRQAresultstable$Condition = factor(levels = c("Synchronous", "TurnTaking", "SelfPaced", "Conversation"))
 
+levels(CRQAresultstable$Condition) = c("Synchronous", "TurnTaking", "SelfPaced", "Conversation")
 
 for (df in data) {
-  x1 = df$HR1
-  print(x1[100])
+  cat("\n\nGroup: ", df$group[1],", Condition: ",df$condition[1],sep='')
   
+  # HR true analysis
+  HR = crqa(df$HR1, df$HR2, delay=21, embed=2, radius = 0.5, normalize = 0, rescale = 0,
+                   mindiagline = 2,minvertline = 2) 
+  cat("\n HR RR:", HR$RR)
   
+  # HR shuffled analysis
+  HRShuffled = crqa(sample(df$HR1), sample(df$HR2), delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2) 
+  cat("\n Shuffled HR RR:", HRShuffled$RR)
+  
+  # Resp true analysis
+  Resp = crqa(df$Resp1, df$Resp2, delay=21, embed=2, radius = 0.5, normalize = 0, rescale = 0,
+                   mindiagline = 2,minvertline = 2) 
+  cat("\n Resp RR:", Resp$RR)
+  
+  # Resp shuffled analysis
+  RespShuffled = crqa(sample(df$Resp1), sample(df$Resp2), delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2) 
+  cat("\n Shuffled Resp RR:", RespShuffled$RR)
+  
+  # Unnaming the dataframes to avoid potential errors
+  HR = unname(HR)
+  HRShuffled = unname(HRShuffled)
+  Resp = unname(Resp)
+  RespShuffled = unname(RespShuffled)
+  colnames(CRQAresultstable) = resultColnames
+  levels(CRQAresultstable$Condition) = c("Synchronous", "TurnTaking", "SelfPaced", "Conversation")
+
+  # rbinding to a dataframe
+  CRQAresultstable = rbind(CRQAresultstable,c(df$group[1],df$condition[1],
+                           HR[1:9],HRShuffled[1:9],Resp[1:9],RespShuffled[1:9]))
 }
 
-View(data[[24]])
+colnames(CRQAresultstable) = resultColnames
+
 ```
  
  
@@ -249,11 +283,79 @@ View(data[[24]])
  - Run crqa on all the surrogate pairs and save the output. NB. which delay, embed, radius parameters should you use?
  - Test whether crqa shows a difference between real and surrogate pairs
  
-```{r}
-parti = 1:4
+```{r surrogate pairs}
+for (df in data){print((df$condition[1]))}
 
-expand.grid(p1=parti,p2=parti) %>%
-  dplyr::filter(p1!=p2)
+surrogateColnames = c("Group1","Group2", "Group1Participant","Group2Participant" ,"Condition",
+"RR.HR", "DET.HR", "NRLINE.HR", "maxL.HR", "L.HR", "ENTR.HR", "rENTR.HR", "LAM.HR", "TT.HR",
+"RR.RE", "DET.RE", "NRLINE.RE", "maxL.RE", "L.RE", "ENTR.RE", "rENTR.RE", "LAM.RE", "TT.RE")
+
+sync = c()
+turn = c()
+self = c()
+conv = c()
+
+
+for (i in seq(length(data))) {
+  cond = data[[i]]$condition[1]
+  
+  if (cond == "Synchronous") {sync = c(sync,i)}
+  if (cond == "TurnTaking") {turn = c(turn,i)}
+  if (cond == "SelfPaced") {self = c(self,i)}
+  if (cond == "Conversation") {conv = c(conv,i)}
+}
+
+conditions = list(sync,turn,self,conv)
+
+surrogateResults = data.frame(matrix(ncol=23,nrow = 0))
+colnames(surrogateResults) = surrogateColnames
+counter = 0
+for (c in conditions) {
+  for (i in seq(length(c))) {
+    for (j in seq(length(c))[i:length(c)]) {
+      if (c[i] != c[j]) {
+        counter = counter + 1
+        cat(counter,"\n")
+        # Running CRQA on HR
+        HR11 = unname(crqa(data[[c[i]]]$HR1, data[[c[j]]]$HR1, delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        HR12 = unname(crqa(data[[c[i]]]$HR1, data[[c[j]]]$HR2, delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        HR21 = unname(crqa(data[[c[i]]]$HR2, data[[c[j]]]$HR1, delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        HR22 = unname(crqa(data[[c[i]]]$HR2, data[[c[j]]]$HR2, delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+
+        # Running CRQA on Resp
+        Resp11 = unname(crqa(data[[c[i]]]$Resp1, data[[c[j]]]$Resp1, delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        Resp12 = unname(crqa(data[[c[i]]]$Resp1, data[[c[j]]]$Resp2, delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        Resp21 = unname(crqa(data[[c[i]]]$Resp2, data[[c[j]]]$Resp1, delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        Resp22 = unname(crqa(data[[c[i]]]$Resp2, data[[c[j]]]$Resp2, delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        
+        # Column names and factor levels to avoid errors
+        colnames(surrogateResults) = surrogateColnames
+        levels(surrogateResults$Condition) = c("Synchronous", "TurnTaking",
+                                               "SelfPaced", "Conversation")
+        
+        # rbinding the results
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],1,1,data[[c[i]]]$condition[1],
+                                                    HR11[1:9],Resp11[1:9]))
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],1,2,data[[c[i]]]$condition[1],
+                                                    HR12[1:9],Resp12[1:9]))
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],2,1,data[[c[i]]]$condition[1],
+                                                    HR21[1:9],Resp21[1:9]))
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],2,2,data[[c[i]]]$condition[1],
+                                                    HR22[1:9],Resp22[1:9]))
+        
+        
+      }
+    }
+  }
+}
 
 ```
  
