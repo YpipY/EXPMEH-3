@@ -83,16 +83,17 @@ clean_file = function(filename) {
   
   # Loop for each column
   for (col in columns[2:7]) {
+    #col = columns[2]
     # A temporary variable to hold the outliers
     out = ifelse(scale(currentData[[col]]) > 2.5 |
                  scale(currentData[[col]]) < -2.5 |
                  currentData[[col]] == -10,
                  currentData[[col]], NA)
-    # Removing the outliers 
-    currentData[[col]] = ifelse(scale(currentData[[col]]) > sd(currentData[[col]])*2.5 |
-                                scale(currentData[[col]]) < sd(currentData[[col]])*-2.5 |
-                                currentData[[col]] == -10, 
-                                mean(currentData[[col]]), currentData[[col]])
+    # Removing the outliers
+    currentData[[col]] = ifelse(scale(currentData[[col]]) > sd(na.omit(currentData[[col]]))*2.5 |
+                                scale(currentData[[col]]) < sd(na.omit(currentData[[col]]))*-2.5 |
+                                currentData[[col]] == -10,
+                                mean(na.omit(currentData[[col]])), currentData[[col]])
 
     # Printing how many percentages of the data that was removed
     perc = round(length(na.omit(out))/length(currentData[[1]])*100,2)
@@ -128,6 +129,8 @@ for (i in seq_along(my_files)) {
     data[[i]] <- currentData
 }
 
+
+
 for (df in data){print(df$group[1])}
 
 # OLD LOOP USE THE ONE ABOVE
@@ -139,7 +142,7 @@ for (file in list.files(path = path)) {
 
 # Useless: S1G1T1 - Resp1, S1G1T2 - Resp1, S1G2T1 - Resp2, S1G2T2 - Resp2
 
-plot(Study1_G2_T3_SelfPaced_clean$time,Study1_G2_T3_SelfPaced_clean$HR2)
+plot(na.omit(currentData$time),na.omit(currentData$Resp1))
 ```
 
 
