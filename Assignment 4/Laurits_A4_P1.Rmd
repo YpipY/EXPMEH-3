@@ -351,7 +351,6 @@ for (c in conditions) {
         surrogateResults = rbind(surrogateResults,c(c[i],c[j],2,2,data[[c[i]]]$condition[1],
                                                     HR22[1:9],Resp22[1:9]))
         
-        
       }
     }
   }
