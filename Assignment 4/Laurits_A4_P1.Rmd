@@ -316,7 +316,7 @@ for (c in conditions) {
       if (c[i] != c[j]) {
         counter = counter + 1
         cat(counter,"\n")
-        # Running CRQA on HR
+        # # Running CRQA on HR
         HR11 = unname(crqa(data[[c[i]]]$HR1, data[[c[j]]]$HR1, delay=21, embed=2, radius = 0.5,
                     normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
         HR12 = unname(crqa(data[[c[i]]]$HR1, data[[c[j]]]$HR2, delay=21, embed=2, radius = 0.5,
@@ -324,6 +324,10 @@ for (c in conditions) {
         HR21 = unname(crqa(data[[c[i]]]$HR2, data[[c[j]]]$HR1, delay=21, embed=2, radius = 0.5,
                     normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
         HR22 = unname(crqa(data[[c[i]]]$HR2, data[[c[j]]]$HR2, delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        HR1 = unname(crqa(data[[c[i]]]$HR1, data[[c[i]]]$HR2, delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        HR2 = unname(crqa(data[[c[j]]]$HR1, data[[c[j]]]$HR2, delay=21, embed=2, radius = 0.5,
                     normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
 
         # Running CRQA on Resp
@@ -335,12 +339,16 @@ for (c in conditions) {
                       normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
         Resp22 = unname(crqa(data[[c[i]]]$Resp2, data[[c[j]]]$Resp2, delay=21, embed=2, radius = 0.5,
                       normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
-        
+        Resp1 = unname(crqa(data[[c[i]]]$Resp1, data[[c[i]]]$Resp2, delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        Resp2 = unname(crqa(data[[c[j]]]$Resp1, data[[c[j]]]$Resp2, delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+
         # Column names and factor levels to avoid errors
         colnames(surrogateResults) = surrogateColnames
         levels(surrogateResults$Condition) = c("Synchronous", "TurnTaking",
                                                "SelfPaced", "Conversation")
-        
+
         # rbinding the results
         surrogateResults = rbind(surrogateResults,c(c[i],c[j],1,1,data[[c[i]]]$condition[1],
                                                     HR11[1:9],Resp11[1:9]))
@@ -350,6 +358,10 @@ for (c in conditions) {
                                                     HR21[1:9],Resp21[1:9]))
         surrogateResults = rbind(surrogateResults,c(c[i],c[j],2,2,data[[c[i]]]$condition[1],
                                                     HR22[1:9],Resp22[1:9]))
+        surrogateResults = rbind(surrogateResults,c(c[i],c[i],1,2,data[[c[i]]]$condition[1],
+                                                    HR1[1:9],Resp1[1:9]))
+        surrogateResults = rbind(surrogateResults,c(c[j],c[j],1,2,data[[c[j]]]$condition[1],
+                                                    HR2[1:9],Resp2[1:9]))
         
       }
     }
