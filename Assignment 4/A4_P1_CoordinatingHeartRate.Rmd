@@ -17,6 +17,7 @@ TT
 DET
 grid.expand
 
+install.packages('lmerTest')
 library(pacman)
 p_load(gridExtra,lme4,evobiR,dplyr,stringr,dotCall64,crqa,zoo)
 library(tidyverse)
@@ -129,15 +130,19 @@ clean_file = function(filename) {
 
 
 #spline tests
-ex = read.csv("Assignment 4/data/CleanData/Study2_G7_T3_TurnTaking.csv")
+ex = read.csv("Assignment 4/data/CleanData2018/Study3_G10_T1_Synchronous.csv")
 
-ex$Resp2 = ifelse(scale(ex$Resp2) > sd(ex$Resp2)*2.5 |
-                                scale(ex$Resp2) < sd(ex$Resp2)*-2.5 |
+ex$Resp2 = ifelse(scale(ex$Resp2) > sd(ex$Resp2,na.rm=TRUE)*2.5 |
+                                scale(ex$Resp2) < sd(ex$Resp2,na.rm=TRUE)*-2.5 |
                                 ex$Resp2 == -10, 
                                 NA, ex$Resp2)
 ex$Resp1 = ifelse(scale(ex$Resp1) > sd(ex$Resp1)*2.5 ,
                                 NA, ex$Resp1)
-mean(is.na(ex$Resp1))
+currentData$ReadingStart <- NULL
+currentData$ReadingStop <- NULL
+
+mean(is.na(ex$Marker))
+sd(ex$Resp1, na.rm=TRUE )
 
 temp <-na.spline(ex$Resp1,maxgap=5000)
 temp<-as.data.frame(temp)
@@ -148,26 +153,31 @@ ex = na.spline(ex,maxgap=5000)
 ex<-as.data.frame(ex)
 
 length(na.omit(Study1_G1_T1_Synchronous_clean[,2]))
-length(na.omit(ex[,2]))
+length(na.omit(ex$Marker))
 
 ?na.spline
 237631
 length(colnames(Study1_G1_T1_Synchronous_clean))
+currentData$Marker
+  currentData$Marker <- NULL
+currentData
+  
+filename='Study3_G10_T1_Synchronous.csv'
 # Cleaning function 
 clean_file = function(filename) {
   cat("\n\n",filename,sep = '')
-  currentData = read.csv(paste(path, filename, sep = "")) # Loading data
+  currentData = read.csv(paste(cleanPath, filename, sep = "")) # Loading data
   
   # Loop for each column
-  for (col in colnames(currentData)[2:length(currentData)]) {
+  for (col in colnames(currentData)[c(1,2,3,4,7,8)]) {
     # A temporary variable to hold the outliers
     out = ifelse(scale(currentData[[col]]) > 2.5 |
                  scale(currentData[[col]]) < -2.5 |
                  currentData[[col]] == -10,
                  currentData[[col]], NA)
     # Removing the outliers 
-    currentData[[col]] = ifelse(scale(currentData[[col]]) > sd(currentData[[col]])*2.5 |
-                                scale(currentData[[col]]) < sd(currentData[[col]])*-2.5 |
+    currentData[[col]] = ifelse(scale(currentData[[col]]) > sd(currentData[[col]],na.rm=TRUE)*2.5 |
+                                scale(currentData[[col]]) < sd(currentData[[col]],na.rm=TRUE)*-2.5 |
                                 currentData[[col]] == -10, 
                                 NA, currentData[[col]])
     # Printing how many percentages of the data that was removed
@@ -177,21 +187,19 @@ clean_file = function(filename) {
     currentData[[col]] = scale(currentData[[col]]) # Scaling
   }
   
-  isBig=length(colnames(currentData))
-  if(isBig==9){
-    crap<-dplyr::select(currentData,"ReadingStart","ReadingStop") 
-    currentData$ReadingStart <- NULL
-    currentData$ReadingStop <- NULL
-  }
+  #isBig=length(colnames(currentData))
+  
+  crap<-dplyr::select(currentData,"Marker",'ReadingStart','ReadingStop') 
+  currentData$Marker <- NULL
+  currentData$ReadingStart <- NULL
+  currentData$ReadingStop <- NULL
+  
   
   # Replacing outliers with a spline
-  tryCatch({currentData = na.spline(currentData,maxgap=5000)
-  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+  currentData = na.spline(currentData,maxgap=5000)
   currentData<-as.data.frame(currentData)
   
-  if(isBig==9){
-    currentData <-cbind(currentData,crap)
-  }
+  currentData <-cbind(currentData,crap)
     
   # Creating new dataframe
   rows = length(SlidingWindow("mean", currentData[[1]], 200, 100))
@@ -199,23 +207,28 @@ clean_file = function(filename) {
   cleanData = data.frame(matrix(nrow = rows, ncol = cols)) 
   colnames(cleanData) = colnames(currentData)
   # Downsizing each column to the new dataframe
-  for (col in colnames(cleanData)) {
+  for (col in colnames(cleanData)[1:7]) {
     cleanData[[col]] = SlidingWindow("mean", currentData[[col]], 200, 100)  
   }
 
   return(cleanData)
 }
     
-path = "C:/Users/slmoni/Documents/Uni/Experimental Methods III/EXPMETH3/Assignment 4/data/CleanData/" # Set any path here
+cleanPath = "C:/Users/slmoni/Documents/Uni/Experimental Methods III/EXPMETH3/Assignment 4/data/CleanData2018/" # Set any path here
 
 
-for (file in list.files(path = path)) {
-  name = str_replace(file, ".csv","_clean")
-  eval(parse(text=paste(name," = clean_file('",file,"')",sep='')))
+data = list()
+my_files = list.files(path = cleanPath)
+for (i in seq_along(my_files)) {
+    currentData <- clean_file(my_files[i])
+    currentData$study = as.numeric(str_replace(str_extract(my_files[i],"y\\d"),"y",""))
+    currentData$group = as.numeric(str_replace(str_extract(my_files[i],"G(\\d)+"),"G",""))
+    currentData$condition = str_replace(str_extract(my_files[i],"_([A-Z]|[a-z]){2,20}"),"_","")
+    data[[i]] <- currentData
 }
 
-View(Study1_G2_T3_SelfPaced_clean)
-
+View(data[[20]])
+warnings()
 ```
 
 
