@@ -1,7 +1,7 @@
 ---
 title: "Assignment 4 - Coordinating Heart Rate"
-author: "Riccardo Fusaroli"
-date: "November 6, 2017"
+author: "Simon Moeller Nielsen"
+date: "14/11 2018"
 output: html_document
 ---
 
@@ -15,6 +15,7 @@ L
 RR
 TT
 DET
+
 grid.expand
 
 install.packages('lmerTest')
@@ -452,8 +453,10 @@ nrow(filter(surrogateResultsFilter, Condition==1))
 nrow(filter(surrogateResultsFilter, Condition==2))
 nrow(filter(surrogateResultsFilter, Condition==4))
 
-csv
+setwd("C:/Users/slmoni/Documents/Uni/Experimental Methods III/EXPMETH3/Assignment 4")
 
+write.csv(surrogateResultsFilter, file = "surrogateResults.csv")
+write.csv(CRQAresultstable, file = "CRQAresultstable.csv")
 ```
 
 ### Testing effects of conditions
