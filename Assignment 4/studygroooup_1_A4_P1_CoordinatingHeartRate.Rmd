@@ -1127,8 +1127,8 @@ colnames(surrogate_synch) <- c("p1", "p2", "RR_HR","DET_HR", "maxL_HR", "L_HR", 
 ```{r}
 
 
-shuffle_results = read.csv("Assignment 4/CRQAresultstable.csv")
-surrogate_results = read.csv("Assignment 4/surrogateResults.csv")
+shuffle_results = read.csv("/Users/lauritsdixen/Desktop/EXPMETH3/Assignment 4/CRQAresultstable.csv")
+surrogate_results = read.csv("/Users/lauritsdixen/Desktop/EXPMETH3/Assignment 4/surrogateResults.csv")
 
 truePairs <- subset(shuffle_results, select = c(Condition, RR.HR, TT.HR, DET.HR, L.HR, maxL.HR, RR.RE, TT.RE, DET.RE, L.RE, maxL.RE))
 pairsShuffled <- subset(shuffle_results, select = c(Condition, RR.HR.S, TT.HR.S, DET.HR.S, L.HR.S, maxL.HR.S, RR.RE.S, TT.RE.S, DET.RE.S, L.RE.S, maxL.RE.S))
@@ -1202,8 +1202,6 @@ for (col in colnames(truePairs[2:11])) {
       }
   }
 }
-
-
 
 
 ```

@@ -129,6 +129,7 @@ for (i in seq_along(my_files)) {
     data[[i]] <- currentData
 }
 
+length(na.omit(ex$Marker))
 
 # OLD LOOP USE THE ONE ABOVE
 for (file in list.files(path = path)) {
@@ -275,6 +276,12 @@ for (df in data) {
 
 colnames(CRQAresultstable) = resultColnames
 
+length(data[[1]]$HR1)
+length(data[[4]]$HR1)
+
+crqa(data[[1]]$HR1, data[[4]]$HR1, delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2) 
+
 ```
  
  
@@ -316,6 +323,7 @@ for (c in conditions) {
       if (c[i] != c[j]) {
         counter = counter + 1
         cat(counter,"\n")
+        
         # # Running CRQA on HR
         HR11 = unname(crqa(data[[c[i]]]$HR1, data[[c[j]]]$HR1, delay=21, embed=2, radius = 0.5,
                     normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
@@ -362,13 +370,98 @@ for (c in conditions) {
                                                     HR1[1:9],Resp1[1:9]))
         surrogateResults = rbind(surrogateResults,c(c[j],c[j],1,2,data[[c[j]]]$condition[1],
                                                     HR2[1:9],Resp2[1:9]))
-        
       }
     }
   }
 }
 
+
+
+
+
+
 ```
+ 
+```{r}
+shuffle_results = read.csv("/Users/lauritsdixen/Desktop/EXPMETH3/Assignment 4/CRQAresultstable.csv")
+surrogate_results = read.csv("/Users/lauritsdixen/Desktop/EXPMETH3/Assignment 4/surrogateResults.csv")
+
+truePairs <- subset(shuffle_results, select = c(Condition, RR.HR, TT.HR, DET.HR, L.HR, maxL.HR, RR.RE, TT.RE, DET.RE, L.RE, maxL.RE))
+pairsShuffled <- subset(shuffle_results, select = c(Condition, RR.HR.S, TT.HR.S, DET.HR.S, L.HR.S, maxL.HR.S, RR.RE.S, TT.RE.S, DET.RE.S, L.RE.S, maxL.RE.S))
+surrogatePairs <- subset(surrogate_results, select = c(Condition, RR.HR, TT.HR, DET.HR, L.HR, maxL.HR, RR.RE, TT.RE, DET.RE, L.RE, maxL.RE))
+colnames(pairsShuffled) = colnames(truePairs)
+
+surrogatePairs$Condition = ifelse(surrogatePairs$Condition == 1, "Synchronous",surrogatePairs$Condition)
+surrogatePairs$Condition = ifelse(surrogatePairs$Condition == 2, "TurnTaking", surrogatePairs$Condition)
+surrogatePairs$Condition = ifelse(surrogatePairs$Condition == 4, "Conversation",surrogatePairs$Condition)
+
+compare_results_HR <- data.frame(matrix(nrow = 0, ncol = 7), stringsAsFactors = FALSE)
+compare_results_RE <- data.frame(matrix(nrow = 0, ncol = 7), stringsAsFactors = FALSE)
+
+colnames(compare_results_HR) = c("Parameter", "Condition", "Control", "p-value", "t-value", "TruePairMean", "ControlMean")
+colnames(compare_results_RE) = c("Parameter", "Condition", "Control", "p-value", "t-value", "TruePairMean", "ControlMean")
+
+
+for (col in colnames(truePairs[2:11])) {
+  
+  test = t.test(truePairs[[col]], pairsShuffled[[col]])
+  
+  if (str_detect(col,"HR")) {
+    output = data.frame(col, "All","Shuffle", test$p.value, test$statistic, test$estimate[1], test$estimate[2])
+    colnames(output) = c("Parameter", "Condition", "Control", "p-value", "t-value", "TruePairMean", "ControlMean")
+    compare_results_HR = rbind(compare_results_HR, output)
+  } else {
+    output = data.frame(col, "All","Shuffle", test$p.value, test$statistic, test$estimate[1], test$estimate[2])
+    colnames(output) = c("Parameter", "Condition", "Control", "p-value", "t-value", "TruePairMean", "ControlMean")
+    compare_results_RE = rbind(compare_results_RE, output)
+  }
+  
+  test = t.test(truePairs[[col]], surrogatePairs[[col]])
+  
+  if (str_detect(col,"HR")) {
+    output = data.frame(col, "All","Surrogate", test$p.value, test$statistic, test$estimate[1], test$estimate[2])
+    colnames(output) = c("Parameter", "Condition", "Control", "p-value", "t-value", "TruePairMean", "ControlMean")
+    compare_results_HR = rbind(compare_results_HR, output)
+  } else {
+    output = data.frame(col, "All","Surrogate", test$p.value, test$statistic, test$estimate[1], test$estimate[2])
+    colnames(output) = c("Parameter", "Condition", "Control", "p-value", "t-value", "TruePairMean", "ControlMean")
+    compare_results_RE = rbind(compare_results_RE, output)
+  }
+  
+  
+  for (cond in unique(truePairs$Condition)){
+    real_fil <- filter(truePairs, Condition == cond)
+    shuf_fil <- filter(pairsShuffled, Condition == cond)
+    
+    test = t.test(real_fil[[col]], shuf_fil[[col]])
+    
+      if (str_detect(col,"HR")) {
+        output = data.frame(col, cond,"Shuffle", test$p.value, test$statistic, test$estimate[1], test$estimate[2])
+        colnames(output) = c("Parameter", "Condition", "Control", "p-value", "t-value", "TruePairMean", "ControlMean")
+        compare_results_HR = rbind(compare_results_HR, output)
+      } else {
+        output = data.frame(col, cond,"Shuffle", test$p.value, test$statistic, test$estimate[1], test$estimate[2])
+        colnames(output) = c("Parameter", "Condition", "Control", "p-value", "t-value", "TruePairMean", "ControlMean")
+        compare_results_RE = rbind(compare_results_RE, output)
+      }
+    
+      test = t.test(truePairs[[col]], surrogatePairs[[col]])
+  
+      if (str_detect(col,"HR")) {
+        output = data.frame(col, cond,"Surrogate", test$p.value, test$statistic, test$estimate[1], test$estimate[2])
+        colnames(output) = c("Parameter", "Condition", "Control", "p-value", "t-value", "TruePairMean", "ControlMean")
+        compare_results_HR = rbind(compare_results_HR, output)
+      } else {
+        output = data.frame(col, cond,"Surrogate", test$p.value, test$statistic, test$estimate[1], test$estimate[2])
+        colnames(output) = c("Parameter", "Condition", "Control", "p-value", "t-value", "TruePairMean", "ControlMean")
+        compare_results_RE = rbind(compare_results_RE, output)
+      }
+  }
+}
+
+
+```
+ 
  
 
 ### Testing effects of conditions
