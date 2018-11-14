@@ -199,8 +199,15 @@ clean_file = function(filename) {
   currentData = na.spline(currentData,maxgap=5000)
   currentData<-as.data.frame(currentData)
   
+ 
+  
+  for (col in colnames(currentData)[c(1:7)]) {
+     currentData[[col]] = ifelse(is.na(currentData[[col]]),
+                                mean(na.omit(currentData[[col]])), currentData[[col]])
+  }
+  
   currentData <-cbind(currentData,crap)
-    
+  
   # Creating new dataframe
   rows = length(SlidingWindow("mean", currentData[[1]], 200, 100))
   cols = length(currentData)
@@ -237,35 +244,44 @@ warnings()
 par = list(lgM = 50, steps = seq(1,  6,  1), radiusspan = 100, radiussample = 40,
            normalize = 0, rescale = 0, mindiagline = 2, minvertline = 2, tw = 0,
            whiteline = FALSE, recpt = FALSE, fnnpercent = 10, typeami = "mindip")
-
-files = list(Study1_G1_T1_Synchronous_clean,Study1_G1_T2_TurnTaking_clean,Study1_G1_T3_SelfPaced_clean,Study1_G2_T1_TurnTaking_clean,Study1_G2_T2_Synchronous_clean,Study1_G2_T3_SelfPaced_clean,Study1_G3_T1_SelfPaced_clean,Study1_G3_T2_TurnTaking_clean,Study1_G3_T3_Synchronous_clean,Study1_G4_T1_Synchronous_clean,Study1_G4_T2_SelfPaced_clean,Study1_G4_T3_TurnTaking_clean,Study2_G5_T1_Synchronous_clean,Study2_G5_T2_TurnTaking_clean,Study2_G5_T3_Conversation_clean,Study2_G6_T1_TurnTaking_clean,Study2_G6_T2_Conversation_clean,Study2_G6_T3_Synchronous_clean,Study2_G7_T1_Conversation_clean,Study2_G7_T2_Synchronous_clean,Study2_G7_T3_TurnTaking_clean,Study2_G8_T1_TurnTaking_clean,Study2_G8_T2_Synchronous_clean,Study2_G8_T3_Conversation_clean,Study2_G9_T1_Synchronous_clean,Study2_G9_T2_Conversation_clean,Study2_G9_T3_TurnTaking_clean,Study2_G10_T1_Conversation_clean,Study2_G10_T2_TurnTaking_clean,Study2_G10_T3_Synchronous_clean)
-
  
-ans = data.frame(matrix(ncol=9),nrow=0)
-colnames(ans) = c("index","respRadius","respEmddim","respDelay","respWarn","HRRadius","HREmddim","HRDelay","HRWarn","NA")
+ans = data.frame(matrix(ncol=7,nrow=0))
+colnames(ans) = c("index","respRadius","respEmddim","respDelay","HRRadius","HREmddim","HRDelay")
 
-for (i in seq(1,length(files))) {
+for (i in seq(1,length(data))) {
   cat("\n",i)
   
-  respWarn = 0
-  x1 = files[[i]][["Resp1"]]
-  x2 = files[[i]][["Resp2"]]
+  x1 = data[[i]][["Resp1"]]
+  x2 = data[[i]][["Resp2"]]
+  temp1 = NULL
+  temp2 = NULL
+  
+  # try = tryCatch(expr = (temp1 = optimizeParam(x1, x2, par, min.rec = 2, max.rec = 5.5)), 
+                 #error=function(e) e, warning=function(w) w)
+  # if(is(try,"warning")) respWarn=1
+  try(expr = (temp1 = optimizeParam(x1, x2, par, min.rec = 2, max.rec = 5.5)))
 
-  try = tryCatch(expr = (temp1 = optimizeParam(x1, x2, par, min.rec = 2, max.rec = 5.5)), 
-                 error=function(e) e, warning=function(w) w)
-  if(is(try,"warning")) respWarn=1
+  x1 = data[[i]][["HR1"]]
+  x2 = data[[i]][["HR2"]]
+  # try = tryCatch(expr = (temp2 = optimizeParam(x1, x2, par, min.rec = 2, max.rec = 
+  #                        5.5)),error=function(e) e, warning=function(w) w)
+  # if(is(try,"warning")) HRWarn=1
+  try(expr = (temp2 = optimizeParam(x1, x2, par, min.rec = 2, max.rec = 5.5)))
   
-  HRWarn = 0
+  if (is.null(temp1) & is.null(temp2)) {
+    ans = rbind(ans,c(i,NA,NA,NA,NA,NA,NA))
+  } else if (is.null(temp1)) {
+    ans = rbind(ans,c(i,NA,NA,NA,temp2$radius,temp2$emddim,temp2$delay))
+  } else if (is.null(temp2)) {
+    ans = rbind(ans,c(i,temp1$radius,temp1$emddim,temp1$delay,NA,NA,NA))
+  } else {
+    ans = rbind(ans,c(i,temp1$radius,temp1$emddim,temp1$delay,temp2$radius,temp2$emddim,temp2$delay))
+  }
   
-  x1 = files[[i]][["HR1"]]
-  x2 = files[[i]][["HR2"]]
-  try = tryCatch(expr = (temp2 = optimizeParam(x1, x2, par, min.rec = 2, max.rec = 
-                         5.5)),error=function(e) e, warning=function(w) w)
-  if(is(try,"warning")) HRWarn=1
-  
-  try(ans = rbind(ans,c(i,temp1$radius,temp1$emddim,temp1$delay,respWarn,temp2$radius,
-                    temp2$emddim,temp2$delay,HRWarn)))
 }
+
+colnames(ans) = c("index","respRadius","respEmddim","respDelay","HRRadius","HREmddim","HRDelay")
+i
 ```
 
 ### Creating controls: shuffled controls
@@ -274,10 +290,171 @@ for (i in seq(1,length(files))) {
  - run crqa and save the output. NB. which delay, embed, radius parameters should you use?
  - statistically compare the crqa indexes in real and shuffled pairs
  
+``` {r QRCA analysis with shuffled control}
+resultColnames = c("Group", "Condition",
+"RR.HR", "DET.HR", "NRLINE.HR", "maxL.HR", "L.HR", "ENTR.HR", "rENTR.HR", "LAM.HR", "TT.HR",
+"RR.HR.S", "DET.HR.S", "NRLINE.HR.S", "maxL.HR.S", "L.HR.S", "ENTR.HR.S", "rENTR.HR.S", "LAM.HR.S", "TT.HR.S",
+"RR.RE", "DET.RE", "NRLINE.RE", "maxL.RE", "L.RE", "ENTR.RE", "rENTR.RE", "LAM.RE", "TT.RE",
+"RR.RE.S", "DET.RE.S", "NRLINE.RE.S", "maxL.RE.S", "L.RE.S", "ENTR.RE.S", "rENTR.RE.S", "LAM.RE.S", "TT.RE.S")
+
+CRQAresultstable = data.frame(matrix(ncol=38,nrow = 0))
+CRQAresultstable$Condition = factor(levels = c("Synchronous", "TurnTaking", "Conversation"))
+
+levels(CRQAresultstable$Condition) = c("Synchronous", "TurnTaking", "Conversation")
+
+for (df in data) {
+  cat("\n\nGroup: ", df$group[1],", Condition: ",df$condition[1],sep='')
+  
+  # HR true analysis
+  HR = crqa(df$HR1, df$HR2, delay=21, embed=2, radius = 0.5, normalize = 0, rescale = 0,
+                   mindiagline = 2,minvertline = 2) 
+  cat("\n HR RR:", HR$RR)
+  
+  # HR shuffled analysis
+  HRShuffled = crqa(sample(df$HR1), sample(df$HR2), delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2) 
+  cat("\n Shuffled HR RR:", HRShuffled$RR)
+  
+  # Resp true analysis
+  Resp = crqa(df$Resp1, df$Resp2, delay=21, embed=2, radius = 0.5, normalize = 0, rescale = 0,
+                   mindiagline = 2,minvertline = 2) 
+  cat("\n Resp RR:", Resp$RR)
+  
+  # Resp shuffled analysis
+  RespShuffled = crqa(sample(df$Resp1), sample(df$Resp2), delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2) 
+  cat("\n Shuffled Resp RR:", RespShuffled$RR)
+  
+  # Unnaming the dataframes to avoid potential errors
+  HR = unname(HR)
+  HRShuffled = unname(HRShuffled)
+  Resp = unname(Resp)
+  RespShuffled = unname(RespShuffled)
+  colnames(CRQAresultstable) = resultColnames
+  levels(CRQAresultstable$Condition) = c("Synchronous", "TurnTaking", "Conversation")
+
+  # rbinding to a dataframe
+  CRQAresultstable = rbind(CRQAresultstable,c(df$group[1],df$condition[1],
+                           HR[1:9],HRShuffled[1:9],Resp[1:9],RespShuffled[1:9]))
+}
+
+colnames(CRQAresultstable) = resultColnames
+
+```
+ 
 ### TRICKY! Creating controls: surrogate pair controls
  - Per each real pair, identify at least one surrogate pair (matching one of the participants, with somebody doing the same task, but in a different pair). Tip: Malte will share a method to do this on screen.
  - Run crqa on all the surrogate pairs and save the output. NB. which delay, embed, radius parameters should you use?
  - Test whether crqa shows a difference between real and surrogate pairs
+ 
+```{r surrogate pairs}
+
+surrogateColnames = c("Group1","Group2", "Group1Participant","Group2Participant" ,"Condition",
+"RR.HR", "DET.HR", "NRLINE.HR", "maxL.HR", "L.HR", "ENTR.HR", "rENTR.HR", "LAM.HR", "TT.HR",
+"RR.RE", "DET.RE", "NRLINE.RE", "maxL.RE", "L.RE", "ENTR.RE", "rENTR.RE", "LAM.RE", "TT.RE")
+
+sync = c()
+turn = c()
+self = c()
+conv = c()
+
+
+for (i in seq(length(data))) {
+  cond = data[[i]]$condition[1]
+  
+  if (cond == "Synchronous") {sync = c(sync,i)}
+  if (cond == "TurnTaking") {turn = c(turn,i)}
+  if (cond == "Conversation") {conv = c(conv,i)}
+}
+
+conditions = list(conv)
+
+surrogateResults = data.frame(matrix(ncol=23,nrow = 0))
+colnames(surrogateResults) = surrogateColnames
+counter = 0
+for (c in conditions) {
+  for (i in seq(length(c))) {
+    for (j in seq(length(c))[i:length(c)]) {
+      if (c[i] != c[j]) {
+        counter = counter + 1
+        cat(counter,"\n")
+        # Running CRQA on HR
+        HR11 = unname(crqa(data[[c[i]]]$HR1, data[[c[j]]]$HR1, delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        HR12 = unname(crqa(data[[c[i]]]$HR1, data[[c[j]]]$HR2, delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        HR21 = unname(crqa(data[[c[i]]]$HR2, data[[c[j]]]$HR1, delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        HR22 = unname(crqa(data[[c[i]]]$HR2, data[[c[j]]]$HR2, delay=21, embed=2, radius = 0.5,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        # HR1 = unname(crqa(data[[c[i]]]$HR1, data[[c[i]]]$HR2, delay=21, embed=2, radius = 0.5,
+        #             normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        # HR2 = unname(crqa(data[[c[j]]]$HR1, data[[c[j]]]$HR2, delay=21, embed=2, radius = 0.5,
+        #             normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+
+        # Running CRQA on Resp
+        Resp11 = unname(crqa(data[[c[i]]]$Resp1, data[[c[j]]]$Resp1, delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        Resp12 = unname(crqa(data[[c[i]]]$Resp1, data[[c[j]]]$Resp2, delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        Resp21 = unname(crqa(data[[c[i]]]$Resp2, data[[c[j]]]$Resp1, delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        Resp22 = unname(crqa(data[[c[i]]]$Resp2, data[[c[j]]]$Resp2, delay=21, embed=2, radius = 0.5,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        # Resp1 = unname(crqa(data[[c[i]]]$Resp1, data[[c[i]]]$Resp2, delay=21, embed=2, radius = 0.5,
+        #               normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        # Resp2 = unname(crqa(data[[c[j]]]$Resp1, data[[c[j]]]$Resp2, delay=21, embed=2, radius = 0.5,
+        #               normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+
+        # Column names and factor levels to avoid errors
+        colnames(surrogateResults) = surrogateColnames
+        levels(surrogateResults$Condition) = c("Synchronous", "TurnTaking", "SelfPaced",
+                                                "Conversation")
+
+        # rbinding the results
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],1,1,data[[c[i]]]$condition[1],
+                                                    HR11[1:9],Resp11[1:9]))
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],1,2,data[[c[i]]]$condition[1],
+                                                    HR12[1:9],Resp12[1:9]))
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],2,1,data[[c[i]]]$condition[1],
+                                                    HR21[1:9],Resp21[1:9]))
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],2,2,data[[c[i]]]$condition[1],
+                                                    HR22[1:9],Resp22[1:9]))
+        # surrogateResults = rbind(surrogateResults,c(c[i],c[i],1,2,data[[c[i]]]$condition[1],
+        #                                             HR1[1:9],Resp1[1:9]))
+        # surrogateResults = rbind(surrogateResults,c(c[j],c[j],1,2,data[[c[j]]]$condition[1],
+        #                                             HR2[1:9],Resp2[1:9]))
+
+      }
+    }
+  }
+}
+nrow(filter(surrogateResults, Condition=='Synchronous'))
+nrow(filter(surrogateResults, Condition=='TurnTaking'))
+nrow(filter(surrogateResults, Condition=='Conversation'))
+
+surrogateResultsFilter = data.frame(matrix(ncol=23,nrow = 0))
+colnames(surrogateResultsFilter) = surrogateColnames
+
+nrow(surrogateResults)
+i
+for (i in 1:nrow(surrogateResults)) {
+  if (surrogateResults[i,1] != surrogateResults[i,2] ){
+    if(surrogateResults[i,3] != surrogateResults[i,4]){
+      surrogateResultsFilter[i,] = surrogateResults[i,]
+    }
+  }
+}
+
+surrogateResultsFilter = na.omit(surrogateResultsFilter)
+
+nrow(filter(surrogateResultsFilter, Condition==1))
+nrow(filter(surrogateResultsFilter, Condition==2))
+nrow(filter(surrogateResultsFilter, Condition==4))
+
+csv
+
+```
 
 ### Testing effects of conditions
  - make a (probably underpowered) mixed model testing effects of the different conditions on heart rate and respiration coordination
