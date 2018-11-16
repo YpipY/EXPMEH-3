@@ -130,6 +130,9 @@ library(tidyverse)
 library(purrr)
 library(stringr)
 library(crqa)
+library(lme4)
+library(lmerTest)
+library(effects)
 ```
 
 ```{r}
@@ -902,13 +905,13 @@ Synchronous_s$cond <- "Synchronous"
 
 
 #take all the unique combinations (participants = unique(surrogate_data$participant))
-participants = unique(Synchronous_s$participant)
+participants = as.numeric(unique(Synchronous_s$participant))
 participants
 
 
 #shuffle all possible combinations of participants (same for all conditions)
 combination = expand.grid(p1 = participants, p2 = participants) %>%
-  dplyr::filter(p1 != p2)
+  dplyr::filter(p1 < p2)
 combination
 
 
@@ -1196,6 +1199,7 @@ for (col in colnames(recur_data[4:13])) {
   for (cond in unique(recur_data$Condition)){
     real_fil <- filter(recur_data, Condition == cond)
     shuf_fil <- filter(recur_data_shuffle, Condition == cond)
+    suro_fil <- filter(recur_data_surrogate, Condition == cond)
     
     test = t.test(real_fil[[col]], shuf_fil[[col]])
     
@@ -1209,7 +1213,7 @@ for (col in colnames(recur_data[4:13])) {
         compare_results_RE = rbind(compare_results_RE, output)
       }
     
-      test = t.test(recur_data[[col]], recur_data_surrogate[[col]]) #KIG HER
+      test = t.test(real_fil[[col]], suro_fil[[col]]) 
   
       if (str_detect(col,"HR")) {
         output = data.frame(col, cond,"Surrogate", test$p.value, test$statistic, test$estimate[1], test$estimate[2])
@@ -1232,17 +1236,135 @@ for (col in colnames(recur_data[4:13])) {
 
 ### Testing effects of conditions
  - make a (probably underpowered) mixed model testing effects of the different conditions on heart rate and respiration coordination
+ 
  - N.B: would it make sense to include surrogate pairs? and if so how? what would that tell you?
+ 
  
 ```{r}
 
-write.csv(compare_results_HR, file = "compare_results_HR.csv")
-write.csv(compare_results_RE, file = "compare_results_RE.csv")
+# write.csv(compare_results_HR, file = "compare_results_HR.csv")
+# write.csv(compare_results_RE, file = "compare_results_RE.csv")
+
+recur_data$baseline = "real"
+recur_data_shuffle$baseline = "shuffle"
+recur_data_surrogate$baseline = "surrogate"
+
+r <- subset(recur_data, select = -c(pair, trial))
+r_shuf <- subset(recur_data_shuffle, select = -c(pair, trial))
+r_sur <- subset(recur_data_surrogate, select = -c(p1, p2))
+  
+
+#BIND
+all_recur_data = rbind(r, r_shuf, r_sur)
+
+
+
+#RR
+RR_HR_model = lm(RR_HR ~ Condition + baseline, all_recur_data)
+summary(RR_HR_model)
+     
+RR_RE_model = lm(RR_HR ~ Condition + baseline , all_recur_data)
+summary(RR_RE_model)
+
+#DET
+DET_HR_model = lm(DET_HR ~ Condition + baseline , all_recur_data)
+summary(DET_HR_model)
+     
+DET_RE_model = lm(DET_HR ~ Condition + baseline , all_recur_data)
+summary(DET_RE_model)
+
+#MaxL
+maxL_HR_model = lm(maxL_HR ~ Condition + baseline , all_recur_data)
+summary(maxL_HR_model)
+     
+maxL_RE_model = lm(maxL_HR ~ Condition + baseline , all_recur_data)
+summary(maxL_RE_model)
+
+#L
+L_HR_model = lm(L_HR ~ Condition + baseline , all_recur_data)
+summary(L_HR_model)
+     
+L_RE_model = lm(L_HR ~ Condition + baseline , all_recur_data)
+summary(L_RE_model) 
+
+#TT
+TT_HR_model = lm(TT_HR ~ Condition + baseline , all_recur_data)
+summary(TT_HR_model)
+     
+TT_RE_model = lm(TT_HR ~ Condition + baseline , all_recur_data)
+summary(TT_RE_model)
+
 
 
 ```
 
  
+```{r}
+#interactions 
+
+#RR
+int_RR_HR_model = lm(RR_HR ~ Condition * baseline , all_recur_data)
+summary(int_RR_HR_model)
+     
+int_RR_RE_model = lm(RR_HR ~ Condition * baseline , all_recur_data)
+summary(int_RR_RE_model)
+
+#DET
+int_DET_HR_model = lm(DET_HR ~ Condition * baseline , all_recur_data)
+summary(int_DET_HR_model)
+     
+int_DET_RE_model = lm(DET_HR ~ Condition * baseline , all_recur_data)
+summary(int_DET_RE_model)
+
+#MaxL
+int_maxL_HR_model = lm(maxL_HR ~ Condition * baseline , all_recur_data)
+summary(int_maxL_HR_model)
+     
+int_maxL_RE_model = lm(maxL_HR ~ Condition * baseline , all_recur_data)
+summary(int_maxL_RE_model)
+
+#L
+int_L_HR_model = lm(L_HR ~ Condition * baseline , all_recur_data)
+summary(int_L_HR_model)
+     
+int_L_RE_model = lm(L_HR ~ Condition * baseline , all_recur_data)
+summary(int_L_RE_model) 
+
+#TT
+int_TT_HR_model = lm(TT_HR ~ Condition * baseline , all_recur_data)
+summary(int_TT_HR_model)
+     
+int_TT_RE_model = lm(TT_HR ~ Condition * baseline , all_recur_data)
+summary(int_TT_RE_model)
+
+
+
+
+```
+
+
+```{r}
+# 
+# languageModel2 = lmer(CHI_MLU ~ Diagnosis * VISIT + I(VISIT^2) + (1+VISIT+ I(VISIT^2)|SUBJ), data=data, REML=FALSE)
+# #data$Diagnosis <- as.factor(data$Diagnosis)
+# 
+# all_recur_data$Condition <- as.factor(all_recur_data$Condition)
+# all_recur_data$baseline <- as.factor(all_recur_data$baseline)
+# 
+# 
+# ee <- effect(c("Condition","baseline"),int_TT_RE_model) 
+# theme_set(theme_bw())
+# ggplot(as.data.frame(ee),
+#        aes(baseline,fit,colour=Condition,fill=Condition))+
+#     geom_line()+
+#      ## colour=NA suppresses edges of the ribbon
+#     geom_ribbon(colour=NA,alpha=0.1,
+#                             aes(ymin=lower,ymax=upper))+
+#   labs(title = "COndition", x = "baseline", y = "int_TT")
+
+
+```
+
 
 ### Effects of respiration coordination on heart rate coordination
  - describe how you would test those.
