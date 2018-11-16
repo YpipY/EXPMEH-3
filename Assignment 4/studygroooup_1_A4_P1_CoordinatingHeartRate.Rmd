@@ -1121,7 +1121,7 @@ colnames(surrogate_synch) <- c("p1", "p2", "RR_HR","DET_HR", "maxL_HR", "L_HR", 
 
 
  
- - Test whether crqa shows a difference between real and surrogate pairs
+ - Test whether crqa shows a difference between real + shuffled pairs AND real + surrogate pairs (!!!!)
  
  
 ```{r}
@@ -1217,7 +1217,8 @@ for (col in colnames(truePairs[2:11])) {
  
 ```{r}
 
-
+write.csv(compare_results_HR, file = "compare_results_HR.csv")
+write.csv(compare_results_RE, file = "compare_results_RE.csv")
 
 
 ```
