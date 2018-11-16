@@ -1,12 +1,27 @@
 ---
 title: "Assignment 4 - Coordinating Heart Rate"
-author: "Riccardo Fusaroli"
-date: "November 6, 2017"
+author: "Simon Moeller Nielsen"
+date: "14/11 2018"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+
+?zoo::na.spline()
+Lmax
+L 
+RR
+TT
+DET
+
+grid.expand
+
+install.packages('lmerTest')
+library(pacman)
+p_load(gridExtra,lme4,evobiR,dplyr,stringr,dotCall64,crqa,zoo)
+library(tidyverse)
 ```
 
 ## Analysing Heart Rate and Respiration data
@@ -44,9 +59,232 @@ NB: For this exercise, you will need to do something very similiar to what you'v
 - Run crqa on heart rate and respiration data (find parameters, run crqa)
 - Does this tell you more than just eyeballing the plots?
 
+```{r}
+
+ex = read.csv("Assignment 4/data/CleanData/Study1_G1_T1_Synchronous.csv")
+
+plot(ex$time,ex$Resp1)
+plot(ex$time,ex$Resp2)
+
+grid.arrange(plot1, plot2, ncol=2)
+
+
+
+ex$time 
+
+data.frame(Matrix(ncol = ))
+
+colnames(ex)
+
+ex['time']
+
+for (col in colnames(ex)) {
+  print(col)
+}
+
+ex[[1]]
+```
+
+
 ### Systematically pre-process the data
 - Loop through all the files (either with a loop or with a function), check which files should be excluded, if any, and save the pre-processed time-series. Tip: plot and visually inspect the data to figure out which should be excluded.
+```{r systematic pre-processing, Laurits}
+clean_file = function(filename) {
+  cat("\n\n",filename,sep = '')
+  currentData = read.csv(paste(path, filename, sep = "")) # Loading data
+  
+  # Loop for each column
+  for (col in colnames(currentData)[2:length(currentData)]) {
+    # A temporary variable to hold the outliers
+    out = ifelse(scale(currentData[[col]]) > 2.5 |
+                 scale(currentData[[col]]) < -2.5 |
+                 currentData[[col]] == -10,
+                 currentData[[col]], NA)
+    # Removing the outliers 
+    currentData[[col]] = ifelse(scale(currentData[[col]]) > sd(currentData[[col]])*2.5 |
+                                scale(currentData[[col]]) < sd(currentData[[col]])*-2.5 |
+                                currentData[[col]] == -10, 
+                                NA, currentData[[col]])
+    currentData[[col]] = na.spline(currentData[[col]])
+    # Printing how many percentages of the data that was removed
+    perc = round(length(na.omit(out))/length(currentData[[1]])*100,2)
+    cat("\nRemoved ",perc, "% from ", col,sep='')
+    
+    currentData[[col]] = scale(currentData[[col]]) # Scaling
+  }
+  
+  # Creating new dataframe
+  rows = length(SlidingWindow("mean", currentData[[1]], 200, 100))
+  cols = length(currentData)
+  cleanData = data.frame(matrix(nrow = rows, ncol = cols)) 
+  colnames(cleanData) = colnames(currentData)
+  # Downsizing each column to the new dataframe
+  for (col in colnames(cleanData)) {
+    cleanData[[col]] = SlidingWindow("mean", currentData[[col]], 200, 100)  
+  }
+
+  return(cleanData)
+}
+```
+
+```{r systematic pre-processing, using spline}
+
+
+#spline tests
+ex = read.csv("Assignment 4/data/CleanData2018/Study3_G10_T1_Synchronous.csv")
+
+ex$Resp2 = ifelse(scale(ex$Resp2) > sd(ex$Resp2,na.rm=TRUE)*2.5 |
+                                scale(ex$Resp2) < sd(ex$Resp2,na.rm=TRUE)*-2.5 |
+                                ex$Resp2 == -10, 
+                                NA, ex$Resp2)
+ex$Resp1 = ifelse(scale(ex$Resp1) > sd(ex$Resp1)*2.5 ,
+                                NA, ex$Resp1)
+currentData$ReadingStart <- NULL
+currentData$ReadingStop <- NULL
+
+mean(is.na(ex$Marker))
+sd(ex$Resp1, na.rm=TRUE )
+
+temp <-na.spline(ex$Resp1,maxgap=5000)
+temp<-as.data.frame(temp)
+ex$Resp1<-temp
+ex = na.spline(ex,maxgap=5000)
+
+
+ex<-as.data.frame(ex)
+
+length(na.omit(Study1_G1_T1_Synchronous_clean[,2]))
+length(na.omit(ex$Marker))
+
+?na.spline
+237631
+length(colnames(Study1_G1_T1_Synchronous_clean))
+currentData$Marker
+  currentData$Marker <- NULL
+currentData
+  
+filename='Study3_G10_T1_Synchronous.csv'
+# Cleaning function 
+clean_file = function(filename) {
+  cat("\n\n",filename,sep = '')
+  currentData = read.csv(paste(cleanPath, filename, sep = "")) # Loading data
+  
+  # Loop for each column
+  for (col in colnames(currentData)[c(1,2,3,4,7,8)]) {
+    # A temporary variable to hold the outliers
+    out = ifelse(scale(currentData[[col]]) > 2.5 |
+                 scale(currentData[[col]]) < -2.5 |
+                 currentData[[col]] == -10,
+                 currentData[[col]], NA)
+    # Removing the outliers 
+    currentData[[col]] = ifelse(scale(currentData[[col]]) > sd(currentData[[col]],na.rm=TRUE)*2.5 |
+                                scale(currentData[[col]]) < sd(currentData[[col]],na.rm=TRUE)*-2.5 |
+                                currentData[[col]] == -10, 
+                                NA, currentData[[col]])
+    # Printing how many percentages of the data that was removed
+    perc = round(length(na.omit(out))/length(currentData[[1]])*100,2)
+    cat("\nRemoved ",perc, "% from ", col,sep='')
+    
+    currentData[[col]] = scale(currentData[[col]]) # Scaling
+  }
+  
+  #isBig=length(colnames(currentData))
+  
+  crap<-dplyr::select(currentData,"Marker",'ReadingStart','ReadingStop') 
+  currentData$Marker <- NULL
+  currentData$ReadingStart <- NULL
+  currentData$ReadingStop <- NULL
+  
+  
+  # Replacing outliers with a spline
+  currentData = na.spline(currentData,maxgap=5000)
+  currentData<-as.data.frame(currentData)
+  
+ 
+  
+  for (col in colnames(currentData)[c(1:7)]) {
+     currentData[[col]] = ifelse(is.na(currentData[[col]]),
+                                mean(na.omit(currentData[[col]])), currentData[[col]])
+  }
+  
+  currentData <-cbind(currentData,crap)
+  
+  # Creating new dataframe
+  rows = length(SlidingWindow("mean", currentData[[1]], 200, 100))
+  cols = length(currentData)
+  cleanData = data.frame(matrix(nrow = rows, ncol = cols)) 
+  colnames(cleanData) = colnames(currentData)
+  # Downsizing each column to the new dataframe
+  for (col in colnames(cleanData)[1:7]) {
+    cleanData[[col]] = SlidingWindow("mean", currentData[[col]], 200, 100)  
+  }
+
+  return(cleanData)
+}
+    
+cleanPath = "C:/Users/slmoni/Documents/Uni/Experimental Methods III/EXPMETH3/Assignment 4/data/CleanData2018/" # Set any path here
+
+
+data = list()
+my_files = list.files(path = cleanPath)
+for (i in seq_along(my_files)) {
+    currentData <- clean_file(my_files[i])
+    currentData$study = as.numeric(str_replace(str_extract(my_files[i],"y\\d"),"y",""))
+    currentData$group = as.numeric(str_replace(str_extract(my_files[i],"G(\\d)+"),"G",""))
+    currentData$condition = str_replace(str_extract(my_files[i],"_([A-Z]|[a-z]){2,20}"),"_","")
+    data[[i]] <- currentData
+}
+
+View(data[[20]])
+warnings()
+```
+
+
 - Run crqa on all the pre-processed time-series and save the output (don't forget to add columns with study, group, condition and trial). Tip: remember to first assess optimal parameters (dimensions, delay, radius) across all timeseries. Tip: it will often fail, just take whatever parameters you get, select optimal across timeseries parameters and run crqa on all timeseries with those. Tip: double check the rr. When I ran the loop, I got very low rr, so I adjusted the radius until the average of rr across all pairs was approx. 4%.
+```{r, parameter optimisation}
+par = list(lgM = 50, steps = seq(1,  6,  1), radiusspan = 100, radiussample = 40,
+           normalize = 0, rescale = 0, mindiagline = 2, minvertline = 2, tw = 0,
+           whiteline = FALSE, recpt = FALSE, fnnpercent = 10, typeami = "mindip")
+ 
+ans = data.frame(matrix(ncol=7,nrow=0))
+colnames(ans) = c("index","respRadius","respEmddim","respDelay","HRRadius","HREmddim","HRDelay")
+
+for (i in seq(1,length(data))) {
+  cat("\n",i)
+  
+  x1 = data[[i]][["Resp1"]]
+  x2 = data[[i]][["Resp2"]]
+  temp1 = NULL
+  temp2 = NULL
+  
+  # try = tryCatch(expr = (temp1 = optimizeParam(x1, x2, par, min.rec = 2, max.rec = 5.5)), 
+                 #error=function(e) e, warning=function(w) w)
+  # if(is(try,"warning")) respWarn=1
+  try(expr = (temp1 = optimizeParam(x1, x2, par, min.rec = 2, max.rec = 5.5)))
+
+  x1 = data[[i]][["HR1"]]
+  x2 = data[[i]][["HR2"]]
+  # try = tryCatch(expr = (temp2 = optimizeParam(x1, x2, par, min.rec = 2, max.rec = 
+  #                        5.5)),error=function(e) e, warning=function(w) w)
+  # if(is(try,"warning")) HRWarn=1
+  try(expr = (temp2 = optimizeParam(x1, x2, par, min.rec = 2, max.rec = 5.5)))
+  
+  if (is.null(temp1) & is.null(temp2)) {
+    ans = rbind(ans,c(i,NA,NA,NA,NA,NA,NA))
+  } else if (is.null(temp1)) {
+    ans = rbind(ans,c(i,NA,NA,NA,temp2$radius,temp2$emddim,temp2$delay))
+  } else if (is.null(temp2)) {
+    ans = rbind(ans,c(i,temp1$radius,temp1$emddim,temp1$delay,NA,NA,NA))
+  } else {
+    ans = rbind(ans,c(i,temp1$radius,temp1$emddim,temp1$delay,temp2$radius,temp2$emddim,temp2$delay))
+  }
+  
+}
+
+colnames(ans) = c("index","respRadius","respEmddim","respDelay","HRRadius","HREmddim","HRDelay")
+i
+```
+
 
 ### Creating controls: shuffled controls
  - loop through all pairs and conditions
@@ -54,10 +292,172 @@ NB: For this exercise, you will need to do something very similiar to what you'v
  - run crqa and save the output. NB. which delay, embed, radius parameters should you use?
  - statistically compare the crqa indexes in real and shuffled pairs
  
+``` {r QRCA analysis with shuffled control}
+resultColnames = c("Group", "Condition",
+"RR.HR", "DET.HR", "NRLINE.HR", "maxL.HR", "L.HR", "ENTR.HR", "rENTR.HR", "LAM.HR", "TT.HR",
+"RR.HR.S", "DET.HR.S", "NRLINE.HR.S", "maxL.HR.S", "L.HR.S", "ENTR.HR.S", "rENTR.HR.S", "LAM.HR.S", "TT.HR.S",
+"RR.RE", "DET.RE", "NRLINE.RE", "maxL.RE", "L.RE", "ENTR.RE", "rENTR.RE", "LAM.RE", "TT.RE",
+"RR.RE.S", "DET.RE.S", "NRLINE.RE.S", "maxL.RE.S", "L.RE.S", "ENTR.RE.S", "rENTR.RE.S", "LAM.RE.S", "TT.RE.S")
+
+CRQAresultstable = data.frame(matrix(ncol=38,nrow = 0))
+CRQAresultstable$Condition = factor(levels = c("Synchronous", "TurnTaking", "Conversation"))
+
+levels(CRQAresultstable$Condition) = c("Synchronous", "TurnTaking", "Conversation")
+
+for (df in data) {
+  cat("\n\nGroup: ", df$group[1],", Condition: ",df$condition[1],sep='')
+  
+  # HR true analysis
+  HR = crqa(df$HR1, df$HR2, delay=8, embed=12, radius = 1.7, normalize = 0, rescale = 0,
+                   mindiagline = 2,minvertline = 2) 
+  cat("\n HR RR:", HR$RR)
+  
+  # HR shuffled analysis
+  HRShuffled = crqa(sample(df$HR1), sample(df$HR2), delay=8, embed=12, radius = 1.7,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2) 
+  cat("\n Shuffled HR RR:", HRShuffled$RR)
+  
+  # Resp true analysis
+  Resp = crqa(df$Resp1, df$Resp2, delay=20, embed=2, radius = 0.45, normalize = 0, rescale = 0,
+                   mindiagline = 2,minvertline = 2) 
+  cat("\n Resp RR:", Resp$RR)
+  
+  # Resp shuffled analysis
+  RespShuffled = crqa(sample(df$Resp1), sample(df$Resp2), delay=20, embed=2, radius = 0.45,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2) 
+  cat("\n Shuffled Resp RR:", RespShuffled$RR)
+  
+  # Unnaming the dataframes to avoid potential errors
+  HR = unname(HR)
+  HRShuffled = unname(HRShuffled)
+  Resp = unname(Resp)
+  RespShuffled = unname(RespShuffled)
+  colnames(CRQAresultstable) = resultColnames
+  levels(CRQAresultstable$Condition) = c("Synchronous", "TurnTaking", "Conversation")
+
+  # rbinding to a dataframe
+  CRQAresultstable = rbind(CRQAresultstable,c(df$group[1],df$condition[1],
+                           HR[1:9],HRShuffled[1:9],Resp[1:9],RespShuffled[1:9]))
+}
+
+colnames(CRQAresultstable) = resultColnames
+
+```
+ 
 ### TRICKY! Creating controls: surrogate pair controls
  - Per each real pair, identify at least one surrogate pair (matching one of the participants, with somebody doing the same task, but in a different pair). Tip: Malte will share a method to do this on screen.
  - Run crqa on all the surrogate pairs and save the output. NB. which delay, embed, radius parameters should you use?
  - Test whether crqa shows a difference between real and surrogate pairs
+ 
+```{r surrogate pairs}
+
+surrogateColnames = c("Group1","Group2", "Group1Participant","Group2Participant" ,"Condition",
+"RR.HR", "DET.HR", "NRLINE.HR", "maxL.HR", "L.HR", "ENTR.HR", "rENTR.HR", "LAM.HR", "TT.HR",
+"RR.RE", "DET.RE", "NRLINE.RE", "maxL.RE", "L.RE", "ENTR.RE", "rENTR.RE", "LAM.RE", "TT.RE")
+
+sync = c()
+turn = c()
+conv = c()
+
+
+for (i in seq(length(data))) {
+  cond = data[[i]]$condition[1]
+  
+  if (cond == "Synchronous") {sync = c(sync,i)}
+  if (cond == "TurnTaking") {turn = c(turn,i)}
+  if (cond == "Conversation") {conv = c(conv,i)}
+}
+
+conditions = list(sync,turn,conv)
+
+surrogateResults = data.frame(matrix(ncol=23,nrow = 0))
+colnames(surrogateResults) = surrogateColnames
+counter = 0
+for (c in conditions) {
+  for (i in seq(length(c))) {
+    for (j in seq(length(c))[i:length(c)]) {
+      if (c[i] != c[j]) {
+        counter = counter + 1
+        cat(counter,"\n")
+        # Running CRQA on HR
+        HR11 = unname(crqa(data[[c[i]]]$HR1, data[[c[j]]]$HR1, delay=8, embed=12, radius = 1.7,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        HR12 = unname(crqa(data[[c[i]]]$HR1, data[[c[j]]]$HR2, delay=8, embed=12, radius = 1.7,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        HR21 = unname(crqa(data[[c[i]]]$HR2, data[[c[j]]]$HR1, delay=8, embed=12, radius = 1.7,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        HR22 = unname(crqa(data[[c[i]]]$HR2, data[[c[j]]]$HR2, delay=8, embed=12, radius = 1.7,
+                    normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        # HR1 = unname(crqa(data[[c[i]]]$HR1, data[[c[i]]]$HR2, delay=21, embed=2, radius = 0.5,
+        #             normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        # HR2 = unname(crqa(data[[c[j]]]$HR1, data[[c[j]]]$HR2, delay=21, embed=2, radius = 0.5,
+        #             normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+
+        # Running CRQA on Resp
+        Resp11 = unname(crqa(data[[c[i]]]$Resp1, data[[c[j]]]$Resp1, delay=20, embed=2, radius = 0.45,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        Resp12 = unname(crqa(data[[c[i]]]$Resp1, data[[c[j]]]$Resp2, delay=20, embed=2, radius = 0.45,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        Resp21 = unname(crqa(data[[c[i]]]$Resp2, data[[c[j]]]$Resp1, delay=20, embed=2, radius = 0.45,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        Resp22 = unname(crqa(data[[c[i]]]$Resp2, data[[c[j]]]$Resp2, delay=20, embed=2, radius = 0.45,
+                      normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        # Resp1 = unname(crqa(data[[c[i]]]$Resp1, data[[c[i]]]$Resp2, delay=21, embed=2, radius = 0.5,
+        #               normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+        # Resp2 = unname(crqa(data[[c[j]]]$Resp1, data[[c[j]]]$Resp2, delay=21, embed=2, radius = 0.5,
+        #               normalize = 0, rescale = 0, mindiagline = 2,minvertline = 2))
+
+        # Column names and factor levels to avoid errors
+        colnames(surrogateResults) = surrogateColnames
+        levels(surrogateResults$Condition) = c("Synchronous", "TurnTaking",
+                                                "Conversation")
+
+        # rbinding the results
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],1,1,data[[c[i]]]$condition[1],
+                                                    HR11[1:9],Resp11[1:9]))
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],1,2,data[[c[i]]]$condition[1],
+                                                    HR12[1:9],Resp12[1:9]))
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],2,1,data[[c[i]]]$condition[1],
+                                                    HR21[1:9],Resp21[1:9]))
+        surrogateResults = rbind(surrogateResults,c(c[i],c[j],2,2,data[[c[i]]]$condition[1],
+                                                    HR22[1:9],Resp22[1:9]))
+        # surrogateResults = rbind(surrogateResults,c(c[i],c[i],1,2,data[[c[i]]]$condition[1],
+        #                                             HR1[1:9],Resp1[1:9]))
+        # surrogateResults = rbind(surrogateResults,c(c[j],c[j],1,2,data[[c[j]]]$condition[1],
+        #                                             HR2[1:9],Resp2[1:9]))
+
+      }
+    }
+  }
+}
+nrow(filter(surrogateResults, Condition=='Synchronous'))
+nrow(filter(surrogateResults, Condition=='TurnTaking'))
+nrow(filter(surrogateResults, Condition=='Conversation'))
+
+surrogateResultsFilter = data.frame(matrix(ncol=23,nrow = 0))
+colnames(surrogateResultsFilter) = surrogateColnames
+
+nrow(surrogateResults)
+i
+for (i in 1:nrow(surrogateResults)) {
+  if (surrogateResults[i,1] != surrogateResults[i,2] ){
+    if(surrogateResults[i,3] != surrogateResults[i,4]){
+      surrogateResultsFilter[i,] = surrogateResults[i,]
+    }
+  }
+}
+
+surrogateResultsFilter = na.omit(surrogateResultsFilter)
+
+nrow(filter(surrogateResultsFilter, Condition==1))
+nrow(filter(surrogateResultsFilter, Condition==2))
+nrow(filter(surrogateResultsFilter, Condition==4))
+
+setwd("C:/Users/slmoni/Documents/Uni/Experimental Methods III/EXPMETH3/Assignment 4")
+
+write.csv(surrogateResultsFilter, file = "surrogateResults.csv")
+write.csv(CRQAresultstable, file = "CRQAresultstable.csv")
+```
 
 ### Testing effects of conditions
  - make a (probably underpowered) mixed model testing effects of the different conditions on heart rate and respiration coordination
