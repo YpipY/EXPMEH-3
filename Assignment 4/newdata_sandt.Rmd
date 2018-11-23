@@ -1,6 +1,6 @@
 ---
 title: "Assignment 4 - Coordinating Heart Rate"
-author: "Riccardo Fusaroli"
+author: "Signe Klove and Thea"
 date: "November 6, 2017"
 output: html_document
 ---
@@ -14,75 +14,78 @@ output: html_document
 
 ## Analysing Heart Rate and Respiration data
 
+```{r, include=FALSE}
+# Data collection process
+# - Goal of experiment --> how can we analyse coordination
+# - The tasks: read out loud (at the same time, taking turns)
+# - So difference between synchronous and turn-taking: for syn
+# 
+# 
+# synchonized at the same time --> expect recurrence around the center line (will see blocks)
+# 
+# Everyblack thing is a monement where the two trajectories are in the same place
+# 
+# What counts as similar activation --> have to decide on threshold (the number is arbitrary)
+# - The same threshold should be used for all participants
+# - Need to rescale and center datapoints for all participants (have them on the same scale to be able to compare)
+# 
+# What if there are big artefacts?? 
+# - Exclude outliers by defining threshold (could look at quartiles, or some number * sd, Malte says use sd)
+# - Need to plot the data --> do preprocessing --> plot the data (is everything okay)
+# - What should we put instead of the excluded data? 
+# - fit a cubic spline --> 200::na.spline --> important to plot it 
+# - Possible to do the preprocessing in different ways --> save all of them --> do the analysis --> check whether the preprocessing affects the results
+# 
+# Downsampling (too much data)
+# - we have way more data than we need! --> computation time 
+# - Take 100 datapoint, find the mean, take 100 data point, find the mean --> call it the mean of the timeinterval
+# - find a sliding mean, take 200 and find mean, when slide 100, take 200 and find mean
+# 
+# 
+# rqa
+# - pick parameters
+#     - lmax --> length of the longest line
+#     - l --> the mean length of lines (do not count dots, but when there is two or more)
+#     - RR --> recurrences (how many recurrences within the timeseries)
+#     - trapping time, TT --> straight lines 
+#     - Determinism, DET --> the ratio of all the recurrences, how many are part of a diaganol line
+#     
+#     
+# In last question --> focus on L, RR; DET
+# 
+# 
+# - run rqa
+# - how do we analysis of the plot?
+# - COmpare the two timeseries
+# - Diagonal structures (follow each other in time)   
+#     - Extract the length of the lines
+#         - A lot of small lines after each other (could be due to noisy data, could be to the threshold)
+#     - A short line in random places --> short intervals of synchronization
+# 
+# Three ways to do statistical comparison:
+# - Do a comparison(is there a difference between people who do synchronization and turn-taking in the parameters)
+# 
+# - shuffle time series, to get a baseline (what we think is relevant is the order in time), use sample()
+#     - run through rqa again 
+#     
+# - how do we know that there is something special about heartrates for this experiment (and not just similarity in heart rate, which is present at all times)
+#     - shuffle across pairs, to get baseline, use grid.expand() to get every combination of participants
+#     - run through rqa again
+# 
+# 
+# 
+# 
+# 
+# Order:
+# - Downsample
+# - Remove outliers (cubic spline)
 
-Data collection process
-- Goal of experiment --> how can we analyse coordination
-- The tasks: read out loud (at the same time, taking turns)
-- So difference between synchronous and turn-taking: for syn
+
+```
 
 
-synchonized at the same time --> expect recurrence around the center line (will see blocks)
-
-Everyblack thing is a monement where the two trajectories are in the same place
-
-What counts as similar activation --> have to decide on threshold (the number is arbitrary)
-- The same threshold should be used for all participants
-- Need to rescale and center datapoints for all participants (have them on the same scale to be able to compare)
-
-What if there are big artefacts?? 
-- Exclude outliers by defining threshold (could look at quartiles, or some number * sd, Malte says use sd)
-- Need to plot the data --> do preprocessing --> plot the data (is everything okay)
-- What should we put instead of the excluded data? 
-- fit a cubic spline --> 200::na.spline --> important to plot it 
-- Possible to do the preprocessing in different ways --> save all of them --> do the analysis --> check whether the preprocessing affects the results
-
-Downsampling (too much data)
-- we have way more data than we need! --> computation time 
-- Take 100 datapoint, find the mean, take 100 data point, find the mean --> call it the mean of the timeinterval
-- find a sliding mean, take 200 and find mean, when slide 100, take 200 and find mean
-
-
-rqa
-- pick parameters
-    - lmax --> length of the longest line
-    - l --> the mean length of lines (do not count dots, but when there is two or more)
-    - RR --> recurrences (how many recurrences within the timeseries)
-    - trapping time, TT --> straight lines 
-    - Determinism, DET --> the ratio of all the recurrences, how many are part of a diaganol line
-    
-    
-In last question --> focus on L, RR; DET
-
-
-- run rqa
-- how do we analysis of the plot?
-- COmpare the two timeseries
-- Diagonal structures (follow each other in time)   
-    - Extract the length of the lines
-        - A lot of small lines after each other (could be due to noisy data, could be to the threshold)
-    - A short line in random places --> short intervals of synchronization
-
-Three ways to do statistical comparison:
-- Do a comparison(is there a difference between people who do synchronization and turn-taking in the parameters)
-
-- shuffle time series, to get a baseline (what we think is relevant is the order in time), use sample()
-    - run through rqa again 
-    
-- how do we know that there is something special about heartrates for this experiment (and not just similarity in heart rate, which is present at all times)
-    - shuffle across pairs, to get baseline, use grid.expand() to get every combination of participants
-    - run through rqa again
-
-
-
-
-
-Order:
-- Downsample
-- Remove outliers (cubic spline)
-
-
-
-The goal of this assignment is to first familiarize you with heart rate, and respiration data and their preprocessing. The second part explores how to analyze interpersonal coordination of these signals.
+The goal of this assignment is to first familiarize you with heart rate, and respiration data and their preprocessing. 
+The second part explores how to analyze interpersonal coordination of these signals.
 
 These are the questions you need to be able to answer at the end of the assignment (aka that you need to submit as part of the portfolio)
 
@@ -133,6 +136,11 @@ library(crqa)
 library(lme4)
 library(lmerTest)
 library(effects)
+library(sjPlot)
+library(sjmisc)
+library(jtools)
+
+
 ```
 
 ```{r}
@@ -1233,6 +1241,44 @@ for (col in colnames(recur_data[4:13])) {
 
  
  
+```{r}
+
+#RR
+con_RR_HR_model = lm(RR_HR ~ Condition, recur_data)
+summary(con_RR_HR_model)
+     
+con_RR_RE_model = lm(RR_HR ~ Condition  , recur_data)
+summary(con_RR_RE_model)
+
+#DET
+con_DET_HR_model = lm(DET_HR ~ Condition  , recur_data)
+summary(con_DET_HR_model)
+     
+con_DET_RE_model = lm(DET_HR ~ Condition  , recur_data)
+summary(con_DET_RE_model)
+
+#MaxL
+con_maxL_HR_model = lm(maxL_HR ~ Condition  , recur_data)
+summary(con_maxL_HR_model)
+     
+con_maxL_RE_model = lm(maxL_HR ~ Condition  , recur_data)
+summary(con_maxL_RE_model)
+
+#L
+con_L_HR_model = lm(L_HR ~ Condition  , recur_data)
+summary(con_L_HR_model)
+     
+con_L_RE_model = lm(L_HR ~ Condition  , recur_data)
+summary(con_L_RE_model) 
+
+#TT
+con_TT_HR_model = lm(TT_HR ~ Condition  , recur_data)
+summary(con_TT_HR_model)
+     
+con_TT_RE_model = lm(TT_HR ~ Condition  , recur_data)
+summary(con_TT_RE_model)
+
+```
 
 ### Testing effects of conditions
  - make a (probably underpowered) mixed model testing effects of the different conditions on heart rate and respiration coordination
@@ -1344,25 +1390,49 @@ summary(int_TT_RE_model)
 
 
 ```{r}
-# 
-# languageModel2 = lmer(CHI_MLU ~ Diagnosis * VISIT + I(VISIT^2) + (1+VISIT+ I(VISIT^2)|SUBJ), data=data, REML=FALSE)
-# #data$Diagnosis <- as.factor(data$Diagnosis)
-# 
-# all_recur_data$Condition <- as.factor(all_recur_data$Condition)
-# all_recur_data$baseline <- as.factor(all_recur_data$baseline)
-# 
-# 
-# ee <- effect(c("Condition","baseline"),int_TT_RE_model) 
-# theme_set(theme_bw())
-# ggplot(as.data.frame(ee),
-#        aes(baseline,fit,colour=Condition,fill=Condition))+
-#     geom_line()+
-#      ## colour=NA suppresses edges of the ribbon
-#     geom_ribbon(colour=NA,alpha=0.1,
-#                             aes(ymin=lower,ymax=upper))+
-#   labs(title = "COndition", x = "baseline", y = "int_TT")
+ee <- effect(c("baseline","Condition"),int_TT_RE_model) 
+theme_set(theme_bw())
+ggplot(as.data.frame(ee),
+       aes(baseline,fit,colour=baseline,fill=baseline))+
+    geom_line()+
+     ## colour=NA suppresses edges of the ribbon
+    geom_ribbon(colour=NA,alpha=0.1,
+                            aes(ymin=lower,ymax=upper))#+
+  #labs(title = "Diagnosis as predictor of child MLU development", x = "Visit", y = "MLU")
 
 
+line_plot <- ggplot(all_recur_data, aes(baseline,RR_HR, color = Condition)) 
+print(line_plot)
+
+line_plot + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line",aes(group = Condition)) + 
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2, aes(group = Condition)) + 
+  scale_color_manual(values=c("goldenrod1","dodgerblue", "red"))
+
+
+
+z <- lm(RR_HR ~ Condition * baseline, data = all_recur_data)
+ plot(all_recur_data)
+ plot(abline(z)) # equivalent to abline(reg = z) or
+ abline(coef = coef(z))
+
+ 
+ 
+ 
+theme_set(theme_sjplot())
+
+plot_model(int_RR_HR_model, type = "pred", terms = c("RR_HR", "Condition"))
+plot_model(int_RR_RE_model, type = "pred", terms = c("RR_RE", "Condition"))
+ 
+plot_model(int_RR_HR_model, type = "int")
+ 
+
+
+effect_plot(int_RR_HR_model, pred = RR_HR)
+
+cat_plot(int_RR_RE_model, pred = baseline, modx = Condition, geom = "line", plot.points = TRUE)
+ 
 ```
 
 
