@@ -544,7 +544,7 @@ summary(TT_RE_model)
 ```
 
 ### Effects of respiration coordination on heart rate coordination
-```{r Making linear models of effects of respiration coordination on heart rate coordination }
+```{r Making linear models of effects of respiration coordination on heart rate coordination}
 #RR
 RR_HR_model = lmer(RR.HR ~ RR.RE + (1|Group), data=truePairs)
 summary(RR_HR_model)
