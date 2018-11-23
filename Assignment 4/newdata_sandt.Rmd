@@ -139,6 +139,7 @@ library(effects)
 library(sjPlot)
 library(sjmisc)
 library(jtools)
+library(ggbeeswarm)
 
 
 ```
@@ -989,26 +990,26 @@ colnames(surrogate_SelfPaced) <- c("p1", "p2", "Condition", "RR_HR","DET_HR", "m
 
 
 HR_turn_fit_surrogate1 <- function(p1) {
-  hr1 = filter(turn, participant == p1)$HR
+  hr1 = filter(TurnTaking_s, participant == p1)$HR
   output = data.frame(hr1)
   return(output)
 }
 
 HR_turn_fit_surrogate2 <- function(p2) {
-  hr2 = filter(turn, participant == p2)$HR
+  hr2 = filter(TurnTaking_s, participant == p2)$HR
   output = data.frame(hr2)
   return(output)
 }
 
 
 Resp_turn_fit_surrogate1 <- function(p1) {
-  resp1 = filter(turn, participant == p1)$Resp
+  resp1 = filter(TurnTaking_s, participant == p1)$Resp
   output = data.frame(resp1)
   return(output)
 }
 
 Resp_turn_fit_surrogate2 <- function(p2) {
-  resp2 = filter(turn, participant == p2)$Resp
+  resp2 = filter(TurnTaking_s, participant == p2)$Resp
   output = data.frame(resp2)
   return(output)
 }
@@ -1057,26 +1058,26 @@ colnames(surrogate_TurnTaking) <- c("p1", "p2", "Condition", "RR_HR","DET_HR", "
 
 
 HR_synch_fit_surrogate1 <- function(p1) {
-  hr1 = filter(synch, participant == p1)$HR
+  hr1 = filter(Synchronous_s, participant == p1)$HR
   output = data.frame(hr1)
   return(output)
 }
 
 HR_synch_fit_surrogate2 <- function(p2) {
-  hr2 = filter(turn, participant == p2)$HR
+  hr2 = filter(Synchronous_s, participant == p2)$HR
   output = data.frame(hr2)
   return(output)
 }
 
 
 Resp_synch_fit_surrogate1 <- function(p1) {
-  resp1 = filter(turn, participant == p1)$Resp
+  resp1 = filter(Synchronous_s, participant == p1)$Resp
   output = data.frame(resp1)
   return(output)
 }
 
 Resp_synch_fit_surrogate2 <- function(p2) {
-  resp2 = filter(turn, participant == p2)$Resp
+  resp2 = filter(Synchronous_s, participant == p2)$Resp
   output = data.frame(resp2)
   return(output)
 }
@@ -1094,8 +1095,8 @@ for (i in seq_along(combination[[1]])) {
   
   cat(i,"\n")
   
-  Res_HR = try(expr=(crqa(one_HR$hr1, two_HR$hr2, delay = 22, embed = 11, radius = 1.652331, normalize=0, rescale=0, mindiagline = 2, minvertline = 2)))
-  Res_Resp = try(expr=(crqa(one_Resp$resp1, two_Resp$resp2, delay = 22, embed = 11, radius = 1.652331, normalize=0, rescale=0, mindiagline = 2, minvertline = 2)))
+  Res_HR = try(expr=(crqa(one_HR$hr1, two_HR$hr2, delay_HR, embed_HR, radius_HR, normalize=0, rescale=0, mindiagline = 2, minvertline = 2)))
+  Res_Resp = try(expr=(crqa(one_Resp$resp1, two_Resp$resp2, delay_RE, embed_RE, radius_RE, normalize=0, rescale=0, mindiagline = 2, minvertline = 2)))
   
   
   p1 <- as.numeric(as.character(combination[i,1]))
@@ -1112,7 +1113,8 @@ for (i in seq_along(combination[[1]])) {
   L_Resp <- Res_Resp[[5]]
   TT_Resp <- Res_Resp[[9]]
   
-  surrogate_Synchronous = rbind(surrogate_Synchronous, c(p1, p2, "Synchronous", RR_HR, DET_HR, maxL_HR, L_HR, TT_HR, RR_Resp, DET_Resp, maxL_Resp, L_Resp, TT_Resp))
+  output = data.frame(p1, p2, "Synchronous", RR_HR, DET_HR, maxL_HR, L_HR, TT_HR, RR_Resp, DET_Resp, maxL_Resp, L_Resp, TT_Resp)
+  surrogate_Synchronous = rbind(surrogate_Synchronous, output)
 
 }
 
@@ -1122,6 +1124,10 @@ colnames(surrogate_Synchronous) <- c("p1", "p2", "Condition", "RR_HR","DET_HR", 
 #binding all surrogate datasets
 
 recur_data_surrogate <- rbind(surrogate_Synchronous, surrogate_TurnTaking, surrogate_SelfPaced)
+recur_data_surrogate$Condition <- as.character(recur_data_surrogate$Condition)
+recur_data_surrogate$Condition = as.character(ifelse(recur_data_surrogate$Condition == "Synchronous", "Synchronous", recur_data_surrogate$Condition))
+
+
 
 
 ```
@@ -1144,20 +1150,20 @@ recur_data_surrogate <- rbind(surrogate_Synchronous, surrogate_TurnTaking, surro
 # colnames(pairsShuffled) = colnames(truePairs)
 
 #rename recur_data
-recur_data$Condition = ifelse(recur_data$Condition == "Synchr", "Synchronous", recur_data$Condition)
-recur_data$Condition = ifelse(recur_data$Condition == "_Synch", "Synchronous", recur_data$Condition)
-recur_data$Condition = ifelse(recur_data$Condition == "TurnTa", "TurnTaking", recur_data$Condition)
-recur_data$Condition = ifelse(recur_data$Condition == "_TurnT", "TurnTaking", recur_data$Condition)
-recur_data$Condition = ifelse(recur_data$Condition == "Conver", "Conversation", recur_data$Condition)
-recur_data$Condition = ifelse(recur_data$Condition == "_Conve", "Conversation", recur_data$Condition)
+recur_data$Condition = as.character(ifelse(recur_data$Condition == "Synchr", "Synchronous", recur_data$Condition))
+recur_data$Condition = as.character(ifelse(recur_data$Condition == "_Synch", "Synchronous", recur_data$Condition))
+recur_data$Condition = as.character(ifelse(recur_data$Condition == "TurnTa", "TurnTaking", recur_data$Condition))
+recur_data$Condition = as.character(ifelse(recur_data$Condition == "_TurnT", "TurnTaking", recur_data$Condition))
+recur_data$Condition = as.character(ifelse(recur_data$Condition == "Conver", "Conversation", recur_data$Condition))
+recur_data$Condition = as.character(ifelse(recur_data$Condition == "_Conve", "Conversation", recur_data$Condition))
 
 #rename shuffeld
-recur_data_shuffle$Condition = ifelse(recur_data_shuffle$Condition == "Synchr", "Synchronous", recur_data_shuffle$Condition)
-recur_data_shuffle$Condition = ifelse(recur_data_shuffle$Condition == "_Synch", "Synchronous", recur_data_shuffle$Condition)
-recur_data_shuffle$Condition = ifelse(recur_data_shuffle$Condition == "TurnTa", "TurnTaking", recur_data_shuffle$Condition)
-recur_data_shuffle$Condition = ifelse(recur_data_shuffle$Condition == "_TurnT", "TurnTaking", recur_data_shuffle$Condition)
-recur_data_shuffle$Condition = ifelse(recur_data_shuffle$Condition == "Conver", "Conversation", recur_data_shuffle$Condition)
-recur_data_shuffle$Condition = ifelse(recur_data_shuffle$Condition == "_Conve", "Conversation", recur_data_shuffle$Condition)
+recur_data_shuffle$Condition = as.character(ifelse(recur_data_shuffle$Condition == "Synchr", "Synchronous", recur_data_shuffle$Condition))
+recur_data_shuffle$Condition = as.character(ifelse(recur_data_shuffle$Condition == "_Synch", "Synchronous", recur_data_shuffle$Condition))
+recur_data_shuffle$Condition = as.character(ifelse(recur_data_shuffle$Condition == "TurnTa", "TurnTaking", recur_data_shuffle$Condition))
+recur_data_shuffle$Condition = as.character(ifelse(recur_data_shuffle$Condition == "_TurnT", "TurnTaking", recur_data_shuffle$Condition))
+recur_data_shuffle$Condition = as.character(ifelse(recur_data_shuffle$Condition == "Conver", "Conversation", recur_data_shuffle$Condition))
+recur_data_shuffle$Condition = as.character(ifelse(recur_data_shuffle$Condition == "_Conve", "Conversation", recur_data_shuffle$Condition))
 
 #surrogate
 recur_data_surrogate$Condition = ifelse(recur_data_surrogate$Condition == "Selfpaced", "Conversation", recur_data_surrogate$Condition)
@@ -1352,35 +1358,35 @@ summary(TT_RE_model)
 int_RR_HR_model = lm(RR_HR ~ Condition * baseline , all_recur_data)
 summary(int_RR_HR_model)
      
-int_RR_RE_model = lm(RR_HR ~ Condition * baseline , all_recur_data)
+int_RR_RE_model = lm(RR_RE ~ Condition * baseline , all_recur_data)
 summary(int_RR_RE_model)
 
 #DET
 int_DET_HR_model = lm(DET_HR ~ Condition * baseline , all_recur_data)
 summary(int_DET_HR_model)
      
-int_DET_RE_model = lm(DET_HR ~ Condition * baseline , all_recur_data)
+int_DET_RE_model = lm(DET_RE ~ Condition * baseline , all_recur_data)
 summary(int_DET_RE_model)
 
 #MaxL
 int_maxL_HR_model = lm(maxL_HR ~ Condition * baseline , all_recur_data)
 summary(int_maxL_HR_model)
      
-int_maxL_RE_model = lm(maxL_HR ~ Condition * baseline , all_recur_data)
+int_maxL_RE_model = lm(maxL_RE ~ Condition * baseline , all_recur_data)
 summary(int_maxL_RE_model)
 
 #L
 int_L_HR_model = lm(L_HR ~ Condition * baseline , all_recur_data)
 summary(int_L_HR_model)
      
-int_L_RE_model = lm(L_HR ~ Condition * baseline , all_recur_data)
+int_L_RE_model = lm(L_RE ~ Condition * baseline , all_recur_data)
 summary(int_L_RE_model) 
 
 #TT
 int_TT_HR_model = lm(TT_HR ~ Condition * baseline , all_recur_data)
 summary(int_TT_HR_model)
      
-int_TT_RE_model = lm(TT_HR ~ Condition * baseline , all_recur_data)
+int_TT_RE_model = lm(TT_RE ~ Condition * baseline , all_recur_data)
 summary(int_TT_RE_model)
 
 
@@ -1422,17 +1428,68 @@ z <- lm(RR_HR ~ Condition * baseline, data = all_recur_data)
  
 theme_set(theme_sjplot())
 
-plot_model(int_RR_HR_model, type = "pred", terms = c("RR_HR", "Condition"))
-plot_model(int_RR_RE_model, type = "pred", terms = c("RR_RE", "Condition"))
- 
-plot_model(int_RR_HR_model, type = "int")
- 
+#position dodge
+plot_model(int_RR_HR_model, type = "pred", terms = c("baseline", "Condition"))
+plot_model(int_RR_RE_model, type = "pred", terms = c("baseline", "Condition"))
 
 
-effect_plot(int_RR_HR_model, pred = RR_HR)
 
-cat_plot(int_RR_RE_model, pred = baseline, modx = Condition, geom = "line", plot.points = TRUE)
- 
+all_recur_data$Condition = as.factor(all_recur_data$Condition)
+all_recur_data$baseline = as.factor(all_recur_data$baseline)
+
+
+predictions = all_recur_data %>%
+  distinct(Condition, baseline) %>%
+  cbind(predict(int_DET_HR_model, newdata = ., interval = "confidence"))
+
+plot(predictions)
+
+
+plot <- ggplot(all_recur_data, aes(x = baseline, y = RR_HR, color = Condition))
+
+plot +
+  stat_summary(fun.y = mean, geom = "point")
+
+
+plot + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line",aes(group = Condition)) + 
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2, aes(group = Condition)) + 
+  scale_color_manual(values=c("goldenrod1","dodgerblue", "red"))
+
+
+
+all_recur_data$Condition = as.factor(all_recur_data$Condition)
+all_recur_data$baseline = as.factor(all_recur_data$baseline)
+all_recur_data$RR_HR = as.numeric(all_recur_data$RR_HR)
+all_recur_data$DET_HR = as.numeric(all_recur_data$DET_HR)
+all_recur_data$maxL_HR = as.numeric(all_recur_data$maxL_HR)
+all_recur_data$L_HR = as.numeric(all_recur_data$L_HR)
+all_recur_data$TT_HR = as.numeric(all_recur_data$TT_HR)
+
+all_recur_data$RR_RE = as.numeric(all_recur_data$RR_RE)
+all_recur_data$DET_RE = as.numeric(all_recur_data$DET_RE)
+all_recur_data$maxL_RE = as.numeric(all_recur_data$maxL_RE)
+all_recur_data$L_RE = as.numeric(all_recur_data$L_RE)
+all_recur_data$TT_RE = as.numeric(all_recur_data$TT_RE)
+
+
+
+#Beeswarm
+
+RespDET <- ggplot(all_recur_data, aes(x = baseline, y = DET_HR)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Baseline", y = "Parameter", title = "R_HR") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = fit), data = predictions, size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = predictions, width = .3) +
+  facet_wrap(~Condition) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+RespDET
+
+
+
 ```
 
 
