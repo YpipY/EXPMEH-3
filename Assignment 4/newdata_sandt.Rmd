@@ -1250,7 +1250,7 @@ for (col in colnames(recur_data[4:13])) {
 ```{r}
 
 #RR
-con_RR_HR_model = lm(RR_HR ~ Condition, recur_data)
+con_RR_HR_model = lm(RR_HR ~ Condition, all_recur_data)
 summary(con_RR_HR_model)
      
 con_RR_RE_model = lm(RR_HR ~ Condition  , recur_data)
@@ -1338,6 +1338,7 @@ summary(L_HR_model)
      
 L_RE_model = lm(L_HR ~ Condition + baseline , all_recur_data)
 summary(L_RE_model) 
+plot_model(L_RE_model, type = "pred", terms = c("baseline", "Condition"), show.data = F, dodge = 1)
 
 #TT
 TT_HR_model = lm(TT_HR ~ Condition + baseline , all_recur_data)
@@ -1380,7 +1381,10 @@ int_L_HR_model = lm(L_HR ~ Condition * baseline , all_recur_data)
 summary(int_L_HR_model)
      
 int_L_RE_model = lm(L_RE ~ Condition * baseline , all_recur_data)
-summary(int_L_RE_model) 
+summary(int_L_RE_model)  #THIS ONE IS SIGNIFICANT
+
+plot_model(int_L_RE_model, type = "pred", terms = c("baseline", "Condition"), show.data = F, dodge = 1)
+
 
 #TT
 int_TT_HR_model = lm(TT_HR ~ Condition * baseline , all_recur_data)
@@ -1396,67 +1400,21 @@ summary(int_TT_RE_model)
 
 
 ```{r}
-ee <- effect(c("baseline","Condition"),int_TT_RE_model) 
-theme_set(theme_bw())
-ggplot(as.data.frame(ee),
-       aes(baseline,fit,colour=baseline,fill=baseline))+
-    geom_line()+
-     ## colour=NA suppresses edges of the ribbon
-    geom_ribbon(colour=NA,alpha=0.1,
-                            aes(ymin=lower,ymax=upper))#+
-  #labs(title = "Diagnosis as predictor of child MLU development", x = "Visit", y = "MLU")
 
-
-line_plot <- ggplot(all_recur_data, aes(baseline,RR_HR, color = Condition)) 
-print(line_plot)
-
-line_plot + 
-  stat_summary(fun.y = mean, geom = "point") +
-  stat_summary(fun.y = mean, geom = "line",aes(group = Condition)) + 
-  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2, aes(group = Condition)) + 
-  scale_color_manual(values=c("goldenrod1","dodgerblue", "red"))
-
-
-
-z <- lm(RR_HR ~ Condition * baseline, data = all_recur_data)
- plot(all_recur_data)
- plot(abline(z)) # equivalent to abline(reg = z) or
- abline(coef = coef(z))
-
- 
  
  
 theme_set(theme_sjplot())
 
 #position dodge
-plot_model(int_RR_HR_model, type = "pred", terms = c("baseline", "Condition"))
+plot_model(int_RR_HR_model, type = "pred", terms = c("baseline", "Condition"), show.data = F, dodge = 1) #,#show.data = T, dodge = 2) #ggplot2::position_dodge(width = 50)
+
 plot_model(int_RR_RE_model, type = "pred", terms = c("baseline", "Condition"))
 
 
+# preparing beeswarm plots
 
 all_recur_data$Condition = as.factor(all_recur_data$Condition)
 all_recur_data$baseline = as.factor(all_recur_data$baseline)
-
-
-predictions = all_recur_data %>%
-  distinct(Condition, baseline) %>%
-  cbind(predict(int_DET_HR_model, newdata = ., interval = "confidence"))
-
-plot(predictions)
-
-
-plot <- ggplot(all_recur_data, aes(x = baseline, y = RR_HR, color = Condition))
-
-plot +
-  stat_summary(fun.y = mean, geom = "point")
-
-
-plot + 
-  stat_summary(fun.y = mean, geom = "point") +
-  stat_summary(fun.y = mean, geom = "line",aes(group = Condition)) + 
-  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2, aes(group = Condition)) + 
-  scale_color_manual(values=c("goldenrod1","dodgerblue", "red"))
-
 
 
 all_recur_data$Condition = as.factor(all_recur_data$Condition)
@@ -1474,19 +1432,189 @@ all_recur_data$L_RE = as.numeric(all_recur_data$L_RE)
 all_recur_data$TT_RE = as.numeric(all_recur_data$TT_RE)
 
 
+#making prediction matrices of the models' predictions: RR, DET, maxL, L, TT
 
-#Beeswarm
+#RR
+pred_RR_HR = all_recur_data %>%
+  distinct(Condition, baseline) %>%
+  cbind(predict(int_RR_HR_model, newdata = ., interval = "confidence"))
 
-RespDET <- ggplot(all_recur_data, aes(x = baseline, y = DET_HR)) + 
+pred_RR_RE = all_recur_data %>%
+  distinct(Condition, baseline) %>%
+  cbind(predict(int_RR_RE_model, newdata = ., interval = "confidence"))
+
+#DET
+
+pred_DET_HR = all_recur_data %>%
+  distinct(Condition, baseline) %>%
+  cbind(predict(int_DET_HR_model, newdata = ., interval = "confidence"))
+
+pred_DET_RE = all_recur_data %>%
+  distinct(Condition, baseline) %>%
+  cbind(predict(int_DET_RE_model, newdata = ., interval = "confidence"))
+
+#maxL
+
+pred_maxL_HR = all_recur_data %>%
+  distinct(Condition, baseline) %>%
+  cbind(predict(int_maxL_HR_model, newdata = ., interval = "confidence"))
+
+pred_maxL_RE = all_recur_data %>%
+  distinct(Condition, baseline) %>%
+  cbind(predict(int_maxL_RE_model, newdata = ., interval = "confidence"))
+
+#L
+pred_L_HR = all_recur_data %>%
+  distinct(Condition, baseline) %>%
+  cbind(predict(int_L_HR_model, newdata = ., interval = "confidence"))
+
+pred_L_RE = all_recur_data %>%
+  distinct(Condition, baseline) %>%
+  cbind(predict(int_L_RE_model, newdata = ., interval = "confidence"))
+
+#TT
+
+pred_TT_HR = all_recur_data %>%
+  distinct(Condition, baseline) %>%
+  cbind(predict(int_TT_HR_model, newdata = ., interval = "confidence"))
+
+pred_TT_RE = all_recur_data %>%
+  distinct(Condition, baseline) %>%
+  cbind(predict(int_TT_RE_model, newdata = ., interval = "confidence"))
+
+
+#Beeswarm plots
+
+#RR
+plot_RR_HR <- ggplot(all_recur_data, aes(x = baseline, y = RR_HR)) + 
   geom_quasirandom(alpha = 0.5, colour = "dark red") + 
-  labs(x = "Baseline", y = "Parameter", title = "R_HR") + 
+  labs(x = "Baseline", y = "RR", title = "RR_HR, beeswarm") + 
 
   #geom_boxplot(alpha = 0.5) +p
-  geom_point(aes(y = fit), data = predictions, size = 5) +
-  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = predictions, width = .3) +
+  geom_point(aes(y = fit), data = pred_RR_HR, size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = pred_RR_HR, width = .3) +
   facet_wrap(~Condition) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
-RespDET
+plot_RR_HR
+
+
+plot_RR_RE <- ggplot(all_recur_data, aes(x = baseline, y = RR_RE)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Baseline", y = "RR", title = "RR_RE, beeswarm") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = fit), data = pred_RR_RE, size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = pred_RR_RE, width = .3) +
+  facet_wrap(~Condition) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot_RR_RE
+
+
+#DET
+plot_DET_HR <- ggplot(all_recur_data, aes(x = baseline, y = DET_HR)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Baseline", y = "DET", title = "DET_HR, beeswarm") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = fit), data = pred_DET_HR, size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = pred_DET_HR, width = .3) +
+  facet_wrap(~Condition) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot_DET_HR
+
+
+plot_DET_RE <- ggplot(all_recur_data, aes(x = baseline, y = DET_RE)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Baseline", y = "DET", title = "DET_RE, beeswarm") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = fit), data = pred_DET_RE, size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = pred_DET_RE, width = .3) +
+  facet_wrap(~Condition) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot_DET_RE
+
+
+#maxL
+
+plot_maxL_HR <- ggplot(all_recur_data, aes(x = baseline, y = maxL_HR)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Baseline", y = "maxL", title = "maxL_HR, beeswarm") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = fit), data = pred_maxL_HR, size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = pred_maxL_HR, width = .3) +
+  facet_wrap(~Condition) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot_maxL_HR
+
+
+plot_maxL_RE <- ggplot(all_recur_data, aes(x = baseline, y = maxL_RE)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Baseline", y = "maxL", title = "maxL_RE, beeswarm") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = fit), data = pred_maxL_RE, size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = pred_maxL_RE, width = .3) +
+  facet_wrap(~Condition) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot_maxL_RE
+
+#L
+
+plot_L_HR <- ggplot(all_recur_data, aes(x = baseline, y = L_HR)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Baseline", y = "L", title = "L_HR, beeswarm") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = fit), data = pred_L_HR, size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = pred_L_HR, width = .3) +
+  facet_wrap(~Condition) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot_L_HR
+
+
+plot_L_RE <- ggplot(all_recur_data, aes(x = baseline, y = L_RE)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Baseline", y = "L", title = "L_RE, beeswarm") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = fit), data = pred_L_RE, size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = pred_L_RE, width = .3) +
+  facet_wrap(~Condition) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot_L_RE
+
+
+
+#TT
+
+plot_TT_HR <- ggplot(all_recur_data, aes(x = baseline, y = TT_HR)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Baseline", y = "TT", title = "TT_HR, beeswarm") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = fit), data = pred_TT_HR, size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = pred_TT_HR, width = .3) +
+  facet_wrap(~Condition) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot_TT_HR
+
+
+plot_TT_RE <- ggplot(all_recur_data, aes(x = baseline, y = TT_RE)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Baseline", y = "TT", title = "TT_RE, beeswarm") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = fit), data = pred_TT_RE, size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = lwr, ymax = upr), data = pred_TT_RE, width = .3) +
+  facet_wrap(~Condition) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot_TT_RE
+
+
+
+
 
 
 
@@ -1501,3 +1629,36 @@ RespDET
  
  
  
+Plots that did not work
+```{r}
+# ee <- effect(c("baseline","Condition"),int_TT_RE_model) 
+# theme_set(theme_bw())
+# ggplot(as.data.frame(ee),
+#        aes(baseline,fit,colour=baseline,fill=baseline))+
+#     geom_line()+
+#      ## colour=NA suppresses edges of the ribbon
+#     geom_ribbon(colour=NA,alpha=0.1,
+#                             aes(ymin=lower,ymax=upper))#+
+#   #labs(title = "Diagnosis as predictor of child MLU development", x = "Visit", y = "MLU")
+# 
+# 
+# line_plot <- ggplot(all_recur_data, aes(baseline,RR_HR, color = Condition)) 
+# print(line_plot)
+# 
+# line_plot + 
+#   stat_summary(fun.y = mean, geom = "point") +
+#   stat_summary(fun.y = mean, geom = "line",aes(group = Condition)) + 
+#   stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2, aes(group = Condition)) + 
+#   scale_color_manual(values=c("goldenrod1","dodgerblue", "red"))
+# 
+# 
+# 
+# z <- lm(RR_HR ~ Condition * baseline, data = all_recur_data)
+#  plot(all_recur_data)
+#  plot(abline(z)) # equivalent to abline(reg = z) or
+#  abline(coef = coef(z))
+# 
+#  
+```
+
+```
