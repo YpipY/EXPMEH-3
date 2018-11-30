@@ -13,22 +13,264 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 
-setwd("~/Documents/3. SEMESTER/Experimental Methods 3/Portfolios/Portfolio 8")
+setwd("~/EXPMETH3/Assignment 5")
 
 library(pacman)
-p_load(tidyverse)
+p_load(tidyverse, metafor, lmerTest, lme4, ggbeeswarm)
 
-data <- read.csv("SR_SCHIZO.csv")
+data <- read.csv("SR_SCHIZO.csv", stringsAsFactors = FALSE)
+
+
 
 ```
 
 ## Questions to be answered
 
-1. What is the current evidence for distinctive patterns of pitch mean and pitch sd in schizophrenia? Report how many papers report quantitative estimates, your method to analyze them, the estimated effect size of the difference (mean effect size and standard error for pitch mean, same for pitch sd) and forest plots representing it. 
+#1. What is the current evidence for distinctive patterns of pitch mean and pitch sd in schizophrenia? Report how many papers report quantitative estimates, your method to analyze them, the estimated effect size of the difference (mean effect size and standard error for pitch mean, same for pitch sd) and forest plots representing it. 
 
-2. Do the results match your own analysis from Assignment 3? If you add your results to the meta-analysis, do the estimated effect sizes change? Report the new estimates and the new forest plots.
+```{r}
 
-3. Assess the quality of the literature: report and comment on heterogeneity of the studies (tau, I2), on publication bias (funnel plot), and on influential studies.
+colnames(data)
+
+PitchMean = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0_SZ_M, m2i=PITCH_F0_HC_M, sd1i=PITCH_F0_SZ_SD, sd2i=PITCH_F0_HC_SD, data = data)
+
+
+Model1.1 <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=PitchMean, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+
+#OR
+
+Model1.2 <- rma(yi, vi, data = PitchMean, slab=Article)
+
+forest(Model1.2)
+
+#RANGE
+
+PitchRange = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0SD_SZ_M, m2i=PITCH_F0SD_HC_M, sd1i=PITCH_F0SD_SZ_SD, sd2i=PITCH_F0SD_HC_SD, data = data)
+
+
+Model2.1 <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=PitchRange, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+
+#OR
+
+Model2.2 <- rma(yi, vi, data = PitchRange, slab=Article)
+
+forest(Model2.2)
+
+
+data[5,] #Martínez-Sánchez et al. (2015) , comment: They report also f0 range (ST), prosodics peaks and valleys, inta syllabic and phonation trajectory. What we report?
+
+data[6,] #Bedwell
+
+data[8,] #Rapcan
+
+
+```
+
+Report how many papers report quantitative estimates: 
+5 report mean, 14 report range
+
+estimated effect sizes: 
+Range: -0.23 [-0.84, 0.39]
+Mean: 0.24 [-0.12, 0.59]
+
+
+
+
+```{r}
+
+#get results out of our model:
+
+#first part of 3rd assignment
+#get average preditions: call predict function, (distinct())
+predict(model, newdata = the matrix of diagnosis and study, allow.new.levels = T)
+
+
+
+
+
+```
+
+
+
+
+
+#2. Do the results match your own analysis from Assignment 3? If you add your results to the meta-analysis, do the estimated effect sizes change? Report the new estimates and the new forest plots.
+
+```{r}
+
+pitch_data <- read.csv("/Users/thearolskovsloth/R-stuff/Assignment 2, part 1/cogsci-methods-3-assignments-master/Assignment3_VoiceSchizo/THEA_pitch_data.csv")
+
+#mutate new colum with subject id AND diagnosis
+pitch_data <- pitch_data %>%
+  mutate(Sub_Diag = str_c(Subject, Diagnosis, sep = ""))
+
+
+#mutate new colum with subject id AND diagnosis
+demo$Diagnosis <- ifelse(demo$Diagnosis == "Control", 0, 1)
+
+demo <- demo %>%
+  mutate(Sub_Diag = str_c(Subject, Diagnosis, sep = ""))
+
+
+#merging datafiles to obtain meta data
+all_pitch <- full_join(demo, pitch_data, by = "Sub_Diag")
+
+all_pitch$range <- all_pitch$q95-all_pitch$q05
+
+
+
+# mean model from ass. 3: 
+mean_model <- lmer(mean_f0 ~ Diagnosis.x + Gender + (1| triangles), all_pitch, REML = F)
+
+mat_mean = all_pitch %>%
+  distinct(triangles, Diagnosis.x, Gender)
+
+pred_mean = predict(mean_model, newdata = na.omit(mat_mean), allow.new.levels = T)
+
+model_pred = cbind(na.omit(mat_mean), pred_mean)
+
+
+# range model
+range_model <- lmer(range ~ Diagnosis.x + Gender + (1| triangles), all_pitch, REML = F)
+
+mat_range = all_pitch %>%
+  distinct(triangles, Diagnosis.x, Gender)
+
+pred_range = predict(range_model, newdata = na.omit(mat_range), allow.new.levels = T)
+
+model_pred = cbind(na.omit(model_pred), pred_range)
+
+
+
+#plotting
+
+plot <- ggplot(na.omit(all_pitch), aes(x = Diagnosis.x, y = mean_f0)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Diagnosis", y = "predicted mean", title = "BEE") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = pred_mean), data = na.omit(model_pred), size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = pred_mean-2*pred_sd, ymax = pred_mean+2*pred_sd), data = model_pred, width = .3) +
+  facet_wrap(~Gender) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot
+
+
+
+```
+
+
+```{r}
+#adding out own results
+
+
+
+data <- rbind(data, rep(NA,length(data)))
+
+data$SAMPLE_SIZE_SZ[56] = 86
+data$SAMPLE_SIZE_HC[56] = 86
+data$Article[56] = "cogsci_fun_with_malte"
+data$StudyID[56] = 49
+data$ArticleID[56] = 47
+data$Year_publication[56] = 2018
+data$Authors[56] = "Simon, Laurits, Osfar, Signe Kløve, and Thea"
+
+a = model_pred %>% filter(Diagnosis.x == 0) 
+b = model_pred %>% filter(Diagnosis.x == 1) 
+
+data$PITCH_F0_HC_M[56] = mean(a$pred_mean)
+data$PITCH_F0_HC_SD[56] = sd(a$pred_mean)
+data$PITCH_F0_SZ_M[56] = mean(b$pred_mean)
+data$PITCH_F0_SZ_SD[56] = sd(b$pred_mean)
+
+data$PITCH_F0SD_HC_M[56] = mean(a$pred_range)
+data$PITCH_F0SD_HC_SD[56] = sd(a$pred_range)
+data$PITCH_F0SD_SZ_M[56] = mean(b$pred_range)
+data$PITCH_F0SD_SZ_SD[56] = sd(b$pred_range)
+
+
+
+
+```
+
+
+```{r}
+
+
+new_PitchMean = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0_SZ_M, m2i=PITCH_F0_HC_M, sd1i=PITCH_F0_SZ_SD, sd2i=PITCH_F0_HC_SD, data = data)
+
+
+new_Model1.1 <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=new_PitchMean, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+
+#OR
+
+new_Model1.2 <- rma(yi, vi, data = new_PitchMean, slab=Article)
+
+forest(new_Model1.2)
+
+#rnge
+new_PitchRange = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0SD_SZ_M, m2i=PITCH_F0SD_HC_M, sd1i=PITCH_F0SD_SZ_SD, sd2i=PITCH_F0SD_HC_SD, data = data)
+new_Model3.1 <- rma(yi, vi, data = new_PitchRange, slab=Article)
+
+forest(new_Model3.1)
+
+
+```
+
+new results: 
+mean: 0.3 [0.00, 0.60]
+
+#3. Assess the quality of the literature: report and comment on heterogeneity of the studies (tau, I2), on publication bias (funnel plot), and on influential studies.
+
+tau squared
+```{r}
+
+summary(new_Model1.2)
+#tau^2 (estimated amount of total heterogeneity): 0.0750 (SE = 0.0882)
+
+
+
+```
+
+Overall variance (τ2) of 0.0750 (SE = 0.0882). Much of the variance (I2: 55.76%) could not be reduced to random sample variability between studies (Q-stats = 11.2764, p-val = 0.046)
+
+I squared
+```{r}
+summary(new_Model1.2)
+#I^2 (total heterogeneity / total variability):   55.76%
+
+```
+
+
+publication bias (funnel plots)
+
+```{r}
+
+
+funnel(new_Model1.2, main = "Random-Effects Model", xlab = "Standardized Mean Difference")
+
+regtest(new_Model1.2)
+ranktest(new_Model1.2)
+
+
+
+
+```
+
+
+influential studies
+```{r}
+
+inf <- influence(new_Model1.2)
+print(inf)
+plot(inf)
+
+#study 5 is super bad
+
+
+```
+
+
 
 ## Tips on the process to follow:
 
@@ -46,3 +288,7 @@ data <- read.csv("SR_SCHIZO.csv")
 - Go back to Assignment 3, add your own study to the data table, and re-run meta-analysis. Do the results change?
 
 - Now look at the output of rma() and check tau and I2
+
+
+
+
