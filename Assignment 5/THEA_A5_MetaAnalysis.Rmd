@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Building on the shoulders of giants: meta-analysis
 
-```{r}
+```{r, include=FALSE}
 
 setwd("~/EXPMETH3/Assignment 5")
 
@@ -26,79 +26,93 @@ data <- read.csv("SR_SCHIZO.csv", stringsAsFactors = FALSE)
 
 ## Questions to be answered
 
-#1. What is the current evidence for distinctive patterns of pitch mean and pitch sd in schizophrenia? Report how many papers report quantitative estimates, your method to analyze them, the estimated effect size of the difference (mean effect size and standard error for pitch mean, same for pitch sd) and forest plots representing it. 
+#1. What is the current evidence for distinctive patterns of pitch mean and pitch sd in schizophrenia? 
+#Report how many papers report quantitative estimates, your method to analyze them, the estimated effect size of the difference (mean effect size and standard error for pitch mean, same for pitch sd) and forest plots representing it. 
 
-```{r}
-
+```{r, include=FALSE}
+#getting names of colmns
 colnames(data)
 
+
+#finding mean
 PitchMean = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0_SZ_M, m2i=PITCH_F0_HC_M, sd1i=PITCH_F0_SZ_SD, sd2i=PITCH_F0_HC_SD, data = data)
 
 
-Model1.1 <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=PitchMean, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+mean_model <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=PitchMean, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+summary(mean_model)
 
-#OR
+#rma
+mean_rma <- rma(yi, vi, data = PitchMean, slab=Article)
 
-Model1.2 <- rma(yi, vi, data = PitchMean, slab=Article)
+#forest plot
+forest(mean_rma)
 
-forest(Model1.2)
+sample_size <- PitchMean$SAMPLE_SIZE_SZ[1] + PitchMean$SAMPLE_SIZE_SZ[5] + PitchMean$SAMPLE_SIZE_SZ[13] +PitchMean$SAMPLE_SIZE_SZ[20] + PitchMean$SAMPLE_SIZE_SZ[30]
 
-#RANGE
+sample_size <- PitchMean$SAMPLE_SIZE_HC[1] + PitchMean$SAMPLE_SIZE_HC[5] + PitchMean$SAMPLE_SIZE_HC[13] +PitchMean$SAMPLE_SIZE_HC[20] + PitchMean$SAMPLE_SIZE_HC[30]
+
+
+
+#finding the range
 
 PitchRange = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0SD_SZ_M, m2i=PITCH_F0SD_HC_M, sd1i=PITCH_F0SD_SZ_SD, sd2i=PITCH_F0SD_HC_SD, data = data)
 
+#mixed model
+model_range <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=PitchRange, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
 
-Model2.1 <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=PitchRange, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+model_range
+#rma-model
+range_rma <- rma(yi, vi, data = PitchRange, slab=Article)
 
-#OR
-
-Model2.2 <- rma(yi, vi, data = PitchRange, slab=Article)
-
-forest(Model2.2)
-
-
-data[5,] #Martínez-Sánchez et al. (2015) , comment: They report also f0 range (ST), prosodics peaks and valleys, inta syllabic and phonation trajectory. What we report?
-
-data[6,] #Bedwell
-
-data[8,] #Rapcan
+forest(range_rma)
 
 
 ```
 
 Report how many papers report quantitative estimates: 
-5 report mean, 14 report range
-
-estimated effect sizes: 
-Range: -0.23 [-0.84, 0.39]
-Mean: 0.24 [-0.12, 0.59]
+5 studies report an estimate of the mean of f0, fundamental frequency.
+192 participants with scizofrenia and 121 control participants. 
 
 
+The overall estimated difference, cohen's d in mean between the scizofrenia group and the control group was 0.24 [-0.12, 0.59]. 
+We cannot be certain that the effect is different from zero, as the confidence intervals crosses zero. 
 
 
-```{r}
+14 studies report an estimate of the range in pitch. 
+605 participants with scizofrenia and 469 control participants. 
 
-#get results out of our model:
+The overall estimated difference, cohen's d in range between the scizofrenia group and the control group was -0.23 [-0.84, 0.39].
 
-#first part of 3rd assignment
-#get average preditions: call predict function, (distinct())
-predict(model, newdata = the matrix of diagnosis and study, allow.new.levels = T)
+Again, we cannot be sure whether there is an effect different from zero, as the confidence intervals cross zero. 
+
+When looking at study Cohen et al. (2014), we can see that the effect size is much different from the effect sizes observed in the other studies. We will return to this matter, when looking at influential studies.
+
+Here are forest plots presenting the findings:
+
+[INSERT PLOT]
 
 
+#Pitch mean
+```{r, echo=TRUE}
 
-
+forest(mean_rma)
 
 ```
 
+#Pitch range
+```{r, echo=TRUE}
 
-
+forest(range_rma)
+```
 
 
 #2. Do the results match your own analysis from Assignment 3? If you add your results to the meta-analysis, do the estimated effect sizes change? Report the new estimates and the new forest plots.
 
-```{r}
+```{r, include=FALSE}
 
 pitch_data <- read.csv("/Users/thearolskovsloth/R-stuff/Assignment 2, part 1/cogsci-methods-3-assignments-master/Assignment3_VoiceSchizo/THEA_pitch_data.csv")
+
+demo <- read.csv("/Users/thearolskovsloth/R-stuff/Assignment 2, part 1/cogsci-methods-3-assignments-master/Assignment3_VoiceSchizo/DemoData.txt", sep = "")
 
 #mutate new colum with subject id AND diagnosis
 pitch_data <- pitch_data %>%
@@ -120,27 +134,25 @@ all_pitch$range <- all_pitch$q95-all_pitch$q05
 
 
 # mean model from ass. 3: 
-mean_model <- lmer(mean_f0 ~ Diagnosis.x + Gender + (1| triangles), all_pitch, REML = F)
+mean_model_old <- lmer(mean_f0 ~ Diagnosis.x + Gender + (1| triangles), all_pitch, REML = F)
 
 mat_mean = all_pitch %>%
   distinct(triangles, Diagnosis.x, Gender)
 
-pred_mean = predict(mean_model, newdata = na.omit(mat_mean), allow.new.levels = T)
+pred_mean = predict(mean_model_old, newdata = na.omit(mat_mean), allow.new.levels = T)
 
 model_pred = cbind(na.omit(mat_mean), pred_mean)
 
 
 # range model
-range_model <- lmer(range ~ Diagnosis.x + Gender + (1| triangles), all_pitch, REML = F)
+range_model_old <- lmer(range ~ Diagnosis.x + Gender + (1| triangles), all_pitch, REML = F)
 
 mat_range = all_pitch %>%
   distinct(triangles, Diagnosis.x, Gender)
 
-pred_range = predict(range_model, newdata = na.omit(mat_range), allow.new.levels = T)
+pred_range = predict(range_model_old, newdata = na.omit(mat_range), allow.new.levels = T)
 
 model_pred = cbind(na.omit(model_pred), pred_range)
-
-
 
 #plotting
 
@@ -160,12 +172,14 @@ plot
 ```
 
 
-```{r}
+```{r, include=FALSE}
 #adding out own results
 
 
 
 data <- rbind(data, rep(NA,length(data)))
+
+#data <- data[-c(57, 58), ]
 
 data$SAMPLE_SIZE_SZ[56] = 86
 data$SAMPLE_SIZE_HC[56] = 86
@@ -190,67 +204,124 @@ data$PITCH_F0SD_SZ_SD[56] = sd(b$pred_range)
 
 
 
-
 ```
 
 
-```{r}
+```{r, include=FALSE}
 
 
 new_PitchMean = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0_SZ_M, m2i=PITCH_F0_HC_M, sd1i=PITCH_F0_SZ_SD, sd2i=PITCH_F0_HC_SD, data = data)
 
 
-new_Model1.1 <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=new_PitchMean, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+new_model_mean <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=new_PitchMean, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
 
 #OR
 
-new_Model1.2 <- rma(yi, vi, data = new_PitchMean, slab=Article)
+new_mean_rma <- rma(yi, vi, data = new_PitchMean, slab=Article)
 
-forest(new_Model1.2)
+forest(new_mean_rma)
 
 #rnge
 new_PitchRange = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0SD_SZ_M, m2i=PITCH_F0SD_HC_M, sd1i=PITCH_F0SD_SZ_SD, sd2i=PITCH_F0SD_HC_SD, data = data)
-new_Model3.1 <- rma(yi, vi, data = new_PitchRange, slab=Article)
 
-forest(new_Model3.1)
+new_range_rma <- rma(yi, vi, data = new_PitchRange, slab=Article)
+
+forest(new_range_rma)
 
 
 ```
 
-new results: 
-mean: 0.3 [0.00, 0.60]
+Comparing the effect sizes from our own study from Assignment 3 with the following effect sizes: 
+mean: 0.33 [0.03, 0.63] and range: -0.39 [-0.81, 0.33].
+These both fall within the confidence intervals from the analysis above. 
+From this we can still infer that the studies are trying to measure the same effect. 
+
+When including our study, we obtained these new effect sizes in the meta analysis:
+mean: 0.25 [-0.02, 0.52]
+range: -0.24 [-0.81, 0.33]
+
+The estimates of the effect sizes has not changed radically. Both effect sizes' confidence intervals cross zero as before.
+Thus, our study does not change the overall conclusion from the previous analysis. 
+
+Below are the updated forest plots:
+
+#Pith mean
+```{r, echo=TRUE}
+forest(new_mean_rma)
+```
+
+#Pitch range
+```{r, echo=TRUE}
+forest(new_range_rma)
+```
+
+
 
 #3. Assess the quality of the literature: report and comment on heterogeneity of the studies (tau, I2), on publication bias (funnel plot), and on influential studies.
 
-tau squared
-```{r}
-
-summary(new_Model1.2)
-#tau^2 (estimated amount of total heterogeneity): 0.0750 (SE = 0.0882)
+Tau squared: 
 
 
+```{r, include=FALSE}
+
+summary(new_mean_rma)
+#tau^2 (estimated amount of total heterogeneity): 0.0510 (SE = 0.0716)
+summary(new_range_rma)
+#tau^2 (estimated amount of total heterogeneity): 1.1934 (SE = 0.4797)
+
+
+```
+
+For the mean of f0 the overall variance (τ2) of 0.0510 (SE = 0.0716). Some of the variance (I2: 46.30%) could not be reduced to random sample variability between studies (Q-stats = 8.8688, p-val = 0.1144). With an insignificant p-value we cannot reject the null hypothesis, that the studies show heterogeneity, and we can believe, they all come from the same underlying distribution and measure the same effect. 
+
+For the pitch range the overall variance (τ2) of 1.1934 (SE = 0.4797). Most of the variance (I2: 95.39%) could not be reduced to random sample variability between studies (Q-stats = 165.3459, p-val < .0001). With a significant p-value we can reject the null hypothesis, that the studies show heterogeneity, and we can believe, they all do not come from the same underlying distribution and measure the same effect. 
+Much of the variance from between studies should come from the one outlying study Cohen et al. (2014), which show a much higher effect size (3.31) than the overal mean (-0.24). We will take a closer look at this now.
+
+I squared:
+
+
+
+
+```{r, include=FALSE}
+summary(new_mean_rma)
+#I^2 (total heterogeneity / total variability):   46.30%
+summary(new_range_rma)
+#I^2 (total heterogeneity / total variability):   95.39%
 
 ```
 
-Overall variance (τ2) of 0.0750 (SE = 0.0882). Much of the variance (I2: 55.76%) could not be reduced to random sample variability between studies (Q-stats = 11.2764, p-val = 0.046)
 
-I squared
-```{r}
-summary(new_Model1.2)
-#I^2 (total heterogeneity / total variability):   55.76%
+#Influential studies mean
+```{r, echo = TRUE}
+#influential studies
+inf <- influence(new_mean_rma)
+#print(inf)
+plot(inf)
 
+#study 5 is super bad
 ```
+
+Here is shown the most influencial study for the mean of f0, given different measures. We see that study #5 always show up as the most influential study, but as we do not find heterogeneity in the Q-test, we do not find it neccessary to remove potential outliers. 
+
+#Influential studies range
+```{r, echo=TRUE}
+inf <- influence(new_range_rma)
+#print(inf)
+plot(inf)
+```
+
+Here we show the most influential studies from the analysis of pitch range. We see that one study in particular (#17) always show up as very influential. This gives us a clue, that this study probably is not drawn from the same distribution as the other studies. After looking at the description of the study, we do not find any cause for this strong effect. But because we will try to do the meta analysis without this study, and see how this changes our estimated overall effect size.
 
 
 publication bias (funnel plots)
 
-```{r}
+```{r, echo=TRUE}
 
 
-funnel(new_Model1.2, main = "Random-Effects Model", xlab = "Standardized Mean Difference")
+funnel(new_mean_rma, main = "Random-Effects Model", xlab = "Standardized Mean Difference")
 
-regtest(new_Model1.2)
-ranktest(new_Model1.2)
+regtest(new_mean_rma)
+ranktest(new_mean_rma)
 
 
 
@@ -258,14 +329,7 @@ ranktest(new_Model1.2)
 ```
 
 
-influential studies
-```{r}
 
-inf <- influence(new_Model1.2)
-print(inf)
-plot(inf)
-
-#study 5 is super bad
 
 
 ```
