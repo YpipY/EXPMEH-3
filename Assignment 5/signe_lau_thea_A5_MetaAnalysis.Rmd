@@ -1,0 +1,427 @@
+---
+title: "Assignment 5 - Meta-analysis of pitch in schizophrenia"
+author: "Signe Kløve, Thea, and Laurits"
+date: "3/7/2017"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Building on the shoulders of giants: meta-analysis
+
+```{r, include=FALSE}
+
+setwd("~/EXPMETH3/Assignment 5")
+
+library(pacman)
+p_load(tidyverse, metafor, lmerTest, lme4, ggbeeswarm)
+
+data <- read.csv("SR_SCHIZO.csv", stringsAsFactors = FALSE)
+
+
+
+```
+
+## Questions to be answered
+
+#1. What is the current evidence for distinctive patterns of pitch mean and pitch sd in schizophrenia? 
+#Report how many papers report quantitative estimates, your method to analyze them, the estimated effect size of the difference (mean effect size and standard error for pitch mean, same for pitch sd) and forest plots representing it. 
+
+```{r, include=FALSE}
+#getting names of colmns
+colnames(data)
+
+
+#finding mean
+PitchMean = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0_SZ_M, m2i=PITCH_F0_HC_M, sd1i=PITCH_F0_SZ_SD, sd2i=PITCH_F0_HC_SD, data = data)
+
+
+mean_model <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=PitchMean, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+summary(mean_model)
+
+#rma
+mean_rma <- rma(yi, vi, data = PitchMean, slab=Article)
+
+#forest plot
+forest(mean_rma)
+
+sample_size <- PitchMean$SAMPLE_SIZE_SZ[1] + PitchMean$SAMPLE_SIZE_SZ[5] + PitchMean$SAMPLE_SIZE_SZ[13] +PitchMean$SAMPLE_SIZE_SZ[20] + PitchMean$SAMPLE_SIZE_SZ[30]
+
+sample_size <- PitchMean$SAMPLE_SIZE_HC[1] + PitchMean$SAMPLE_SIZE_HC[5] + PitchMean$SAMPLE_SIZE_HC[13] +PitchMean$SAMPLE_SIZE_HC[20] + PitchMean$SAMPLE_SIZE_HC[30]
+
+
+
+#finding the range
+
+PitchRange = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0SD_SZ_M, m2i=PITCH_F0SD_HC_M, sd1i=PITCH_F0SD_SZ_SD, sd2i=PITCH_F0SD_HC_SD, data = data)
+
+#mixed model
+model_range <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=PitchRange, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+
+model_range
+#rma-model
+range_rma <- rma(yi, vi, data = PitchRange, slab=Article)
+
+forest(range_rma)
+
+
+```
+
+Report how many papers report quantitative estimates: 
+5 studies report an estimate of the mean of f0, fundamental frequency.
+192 participants with scizofrenia and 121 control participants. 
+
+
+The overall estimated difference, cohen's d in mean between the scizofrenia group and the control group was 0.24 [-0.12, 0.59]. 
+We cannot be certain that the effect is different from zero, as the confidence intervals crosses zero. 
+
+
+14 studies report an estimate of the range in pitch. 
+605 participants with scizofrenia and 469 control participants. 
+
+The overall estimated difference, cohen's d in range between the scizofrenia group and the control group was -0.23 [-0.84, 0.39].
+
+Again, we cannot be sure whether there is an effect different from zero, as the confidence intervals cross zero. 
+
+When looking at study Cohen et al. (2014), we can see that the effect size is much different from the effect sizes observed in the other studies. We will return to this matter, when looking at influential studies.
+
+Here are forest plots presenting the findings:
+#Pitch mean
+```{r, echo=TRUE}
+
+forest(mean_rma)
+
+```
+
+#Pitch range
+```{r, echo=TRUE}
+
+forest(range_rma)
+```
+
+
+#2. Do the results match your own analysis from Assignment 3? If you add your results to the meta-analysis, do the estimated effect sizes change? Report the new estimates and the new forest plots.
+
+```{r, include=FALSE}
+
+pitch_data <- read.csv("/Users/thearolskovsloth/R-stuff/Assignment 2, part 1/cogsci-methods-3-assignments-master/Assignment3_VoiceSchizo/THEA_pitch_data.csv")
+
+demo <- read.csv("/Users/thearolskovsloth/R-stuff/Assignment 2, part 1/cogsci-methods-3-assignments-master/Assignment3_VoiceSchizo/DemoData.txt", sep = "")
+
+#mutate new colum with subject id AND diagnosis
+pitch_data <- pitch_data %>%
+  mutate(Sub_Diag = str_c(Subject, Diagnosis, sep = ""))
+
+
+#mutate new colum with subject id AND diagnosis
+demo$Diagnosis <- ifelse(demo$Diagnosis == "Control", 0, 1)
+
+demo <- demo %>%
+  mutate(Sub_Diag = str_c(Subject, Diagnosis, sep = ""))
+
+
+#merging datafiles to obtain meta data
+all_pitch <- full_join(demo, pitch_data, by = "Sub_Diag")
+
+all_pitch$range <- all_pitch$q95-all_pitch$q05
+
+
+
+# mean model from ass. 3: 
+mean_model_old <- lmer(mean_f0 ~ Diagnosis.x + Gender + (1| triangles), all_pitch, REML = F)
+
+mat_mean = all_pitch %>%
+  distinct(triangles, Diagnosis.x, Gender)
+
+pred_mean = predict(mean_model_old, newdata = na.omit(mat_mean), allow.new.levels = T)
+
+model_pred = cbind(na.omit(mat_mean), pred_mean)
+
+
+# range model
+range_model_old <- lmer(range ~ Diagnosis.x + Gender + (1| triangles), all_pitch, REML = F)
+
+mat_range = all_pitch %>%
+  distinct(triangles, Diagnosis.x, Gender)
+
+pred_range = predict(range_model_old, newdata = na.omit(mat_range), allow.new.levels = T)
+
+model_pred = cbind(na.omit(model_pred), pred_range)
+
+
+
+```
+
+##Plotting predictions
+
+```{r, echo=TRUE}
+
+plot <- ggplot(na.omit(all_pitch), aes(x = Diagnosis.x, y = mean_f0)) + 
+  geom_quasirandom(alpha = 0.5, colour = "dark red") + 
+  labs(x = "Diagnosis", y = "predicted mean", title = "BEE") + 
+
+  #geom_boxplot(alpha = 0.5) +p
+  geom_point(aes(y = pred_mean), data = na.omit(model_pred), size = 5) +
+  geom_errorbar(aes(y = NULL, ymin = pred_mean-2*pred_range, ymax = pred_mean+2*pred_range), data = model_pred, width = .3) +
+  facet_wrap(~Gender) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot
+
+```
+
+
+```{r, include=FALSE}
+#adding out own results
+
+
+
+data <- rbind(data, rep(NA,length(data)))
+
+#data <- data[-c(57, 58), ]
+
+data$SAMPLE_SIZE_SZ[56] = 86
+data$SAMPLE_SIZE_HC[56] = 86
+data$Article[56] = "cogsci_fun_with_malte"
+data$StudyID[56] = 49
+data$ArticleID[56] = 47
+data$Year_publication[56] = 2018
+data$Authors[56] = "Simon, Laurits, Osfar, Signe Kløve, and Thea"
+
+a = model_pred %>% filter(Diagnosis.x == 0) 
+b = model_pred %>% filter(Diagnosis.x == 1) 
+
+data$PITCH_F0_HC_M[56] = mean(a$pred_mean)
+data$PITCH_F0_HC_SD[56] = sd(a$pred_mean)
+data$PITCH_F0_SZ_M[56] = mean(b$pred_mean)
+data$PITCH_F0_SZ_SD[56] = sd(b$pred_mean)
+
+data$PITCH_F0SD_HC_M[56] = mean(a$pred_range)
+data$PITCH_F0SD_HC_SD[56] = sd(a$pred_range)
+data$PITCH_F0SD_SZ_M[56] = mean(b$pred_range)
+data$PITCH_F0SD_SZ_SD[56] = sd(b$pred_range)
+
+
+
+```
+
+
+```{r, include=FALSE}
+
+
+new_PitchMean = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0_SZ_M, m2i=PITCH_F0_HC_M, sd1i=PITCH_F0_SZ_SD, sd2i=PITCH_F0_HC_SD, data = data)
+
+
+new_model_mean <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=new_PitchMean, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+
+#OR
+
+new_mean_rma <- rma(yi, vi, data = new_PitchMean, slab=Article)
+
+forest(new_mean_rma)
+
+#rnge
+new_PitchRange = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0SD_SZ_M, m2i=PITCH_F0SD_HC_M, sd1i=PITCH_F0SD_SZ_SD, sd2i=PITCH_F0SD_HC_SD, data = data)
+
+new_range_rma <- rma(yi, vi, data = new_PitchRange, slab=Article)
+
+forest(new_range_rma)
+
+
+```
+
+Comparing the effect sizes from our own study from Assignment 3 with the following effect sizes: 
+mean: 0.33 [0.03, 0.63] and range: -0.39 [-0.81, 0.33].
+These both fall within the confidence intervals from the analysis above. 
+From this we can still infer that the studies are trying to measure the same effect. 
+
+When including our study, we obtained these new effect sizes in the meta analysis:
+mean: 0.25 [-0.02, 0.52]
+range: -0.24 [-0.81, 0.33]
+
+The estimates of the effect sizes has not changed radically. Both effect sizes' confidence intervals cross zero as before.
+Thus, our study does not change the overall conclusion from the previous analysis. 
+
+Below are the updated forest plots:
+
+#Pith mean
+```{r, echo=TRUE}
+forest(new_mean_rma)
+```
+
+#Pitch range
+```{r, echo=TRUE}
+forest(new_range_rma)
+```
+
+
+
+#3. Assess the quality of the literature: report and comment on heterogeneity of the studies (tau, I2), on publication bias (funnel plot), and on influential studies.
+
+##Tau squared and I squared: 
+
+
+```{r, include=FALSE}
+
+summary(new_mean_rma)
+#tau^2 (estimated amount of total heterogeneity): 0.0510 (SE = 0.0716)
+summary(new_range_rma)
+#tau^2 (estimated amount of total heterogeneity): 1.1934 (SE = 0.4797)
+
+
+```
+
+For the mean of f0 the overall variance (τ2) is 0.0510 (SE = 0.0716). Some of the variance (I2: 46.30%) could not be reduced to random sample variability between studies (Q-stats = 8.8688, p-val = 0.114). With an insignificant p-value we cannot reject the null hypothesis, that the studies show homogeneity, and we can believe, they all come from the same underlying distribution and measure the same effect. 
+
+For the pitch range the overall variance (τ2) of 1.1934 (SE = 0.4797). Most of the variance (I2: 95.39%) could not be reduced to random sample variability between studies (Q-stats = 165.3459, p-val < .05). With a significant p-value we can reject the null hypothesis, that the studies show homogeneity, and we can believe, they all do not come from the same underlying distribution and measure the same effect. 
+Much of the variance from between studies should come from the one outlying study Cohen et al. (2014), which show a much higher effect size (3.31) than the overal mean (-0.24). We will take a closer look at this now.
+
+
+```{r, include=FALSE}
+summary(new_mean_rma)
+#I^2 (total heterogeneity / total variability):   46.30%
+summary(new_range_rma)
+#I^2 (total heterogeneity / total variability):   95.39%
+
+```
+
+
+##Influential studies mean
+
+```{r, echo = TRUE}
+#influential studies
+inf <- influence(new_mean_rma)
+#print(inf)
+plot(inf)
+
+```
+
+Here is shown the most influencial study for the mean of f0, given different measures. We see that study #5 always show up as the most influential study, but as we do not find heterogeneity in the Q-test, we do not find it neccessary to remove potential outliers. 
+
+##Influential studies range
+```{r, echo=TRUE}
+inf <- influence(new_range_rma)
+#print(inf)
+plot(inf)
+
+
+```
+
+Here we show the most influential studies from the analysis of pitch range. We see that one study in particular (#17) always show up as very influential. This gives us a clue, that this study probably is not drawn from the same distribution as the other studies. After looking at the description of the study, we do not find any cause for this strong effect. But because we will try to do the meta analysis without this study, and see how this changes our estimated overall effect size.
+
+
+##Publication bias (funnel plots)
+
+With funnel plots we plot the effect sizes of the studies against their standard error. By doing this we can asess if the unsure studies are the ones with the good results. If this happens to be the case there might be a publication bias in this field of studies, meaning that only the significant findings are published and thereby biasing the literature on the effect that is studied. 
+
+###Mean
+```{r, echo=TRUE}
+
+#mean
+funnel(new_mean_rma, main = "Random-Effects Model: Mean", xlab = "Standardized Mean Difference")
+
+regtest(new_mean_rma)
+ranktest(new_mean_rma)
+
+
+```
+
+Visually inspecting the funnel plot for mean is first of all a bit problematic, due to the very few datapoints. This makes it difficult to conclude on general tendencies. I.e. it would be possible to both the accept and reject symmetry. However, we can inspect it numerically via the ranktest. This in non-significant, and thus points to the fact that there is no obvious publication bias (Kendall's tau = -0.0667, p = 1.0). 
+
+###Range
+```{r, echo=TRUE}
+
+#range
+funnel(new_range_rma, main = "Random-Effects Model: Range", xlab = "Standardized Mean Difference")
+
+regtest(new_range_rma)
+ranktest(new_range_rma)
+```
+
+Inspecting the funnel plot with range it does not look like there is an obvious correlation beteween the datapoints (effect size and SE). However, the influential study: Cohen, 2014, might disturb the interpretation of the plot, as it would change radically wihtout this study. The ranktest is still non-significant (Kendall's tau = -0.2381, p = 0.24).
+
+
+Looking at the range data for Cohen 2014, we find that the standard deviations associated with the range is unlikely small. The data is logtransformed. range_mean_schizo = 3.35, range_sd_schizo = 0.193 and for control range_mean_control = 2.87 , range_sd_control = 0.05. By having so small standard deviations relatively to the mean estimates, the study gets an incredibly high effect size on 3.31. An effect size in that magnitude is highly unlikely. It could suggest an artifact in the data collection. Looking into the description of the study, there is a problem with how the sd was measured. They measured sd within each single utterance resultning in a very low sd. This method is different from the other studies we compare, showing that they don't measure the same thing. 
+
+Therefore, we exclude the study and run the analysis again. 
+
+```{r, include=FALSE}
+
+data_cohen_exclude <- data[-c(17), ]
+
+#range
+newest_PitchRange = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0SD_SZ_M, m2i=PITCH_F0SD_HC_M, sd1i=PITCH_F0SD_SZ_SD, sd2i=PITCH_F0SD_HC_SD, data = data_cohen_exclude)
+
+newest_range_rma <- rma(yi, vi, data = newest_PitchRange, slab=Article)
+
+```
+
+#Updated forest plot of range
+```{r, echo=TRUE}
+forest(newest_range_rma)
+```
+
+Now there seems to be an actual effect detected, since the confidence intervals do not cross zero.
+
+#Updated plot of influential studies
+```{r, echo=TRUE}
+summary(newest_range_rma)
+
+```
+
+tau^2 (estimated amount of total heterogeneity): 0.2945 (SE = 0.1427)
+I^2 (total heterogeneity / total variability):   84.13%
+
+For the range of f0 the overall variance (τ2) is 0.2945 (SE = 0.1427). Much of the variance (I2: 84.13%) could not be reduced to random sample variability between studies (Q-stats = 61.0494, p-val < .05). With a significant p-value we can reject the null hypothesis, that the studies show homogeneity, and we cannnot believe, they all come from the same underlying distribution nor measure the same effect. 
+
+
+```{r}
+inf <- influence(newest_range_rma)
+plot(inf)
+```
+
+Now there are no studies that seem radically inappropriate in this meta-study.
+
+
+#Updated funnel plot
+```{r, echo=TRUE}
+funnel(newest_range_rma, main = "Random-Effects Model: Range without Cohen2014", xlab = "Standardized Mean Difference")
+
+regtest(newest_range_rma)
+ranktest(newest_range_rma)
+```
+
+However, the datapoints in the funnel plot looks correlated now.
+The numerical inspection suggests a publication bias (Kendall's tau = -0.4286, p = 0.0356)
+
+
+#Conclusion
+Meta-analysis of mean
+
+Based on this meta-analysis we found no effect of pitch mean between schizofrenia and control group as the confidence intervals cross zero (0.24[-0.12,0.59]). This is also the case, when adding our cogsci to the analysis, however it gets closer to not crossing zero (0.25[-0.02,0.52]) . This suggest that more data is needed to assess whether the effect is real. 
+
+Meta-analysis of pitch range 
+
+In the meta-analysis of pitch range we found no effect (-0.23[-0.84,0.39]), when looking at all the studies, also when adding our cogsci study. Only if we remove the outlier Cohen 2014, do we find a significant effect (-0.47[-0.78,-0.15]). We do not have any really good reasons for removing this study, other than the effect size of 3.3 being alarmingly large and them measuring on a word level rather than whole sentences. We should probably trust the analysis without Cohen 2014 more, as it reflects most of the literature, but further investigations are required to conclude anything with certainty. 
+
+## Tips on the process to follow:
+
+- Download the data on all published articles analyzing pitch in schizophrenia (on gitlab)
+
+- Look through the dataset to find out which columns to use, and if there is any additional information written as comments (real world data is always messy!).
+    * Hint: Make sure you read the comments in the columns: `pitch_f0_variability`, `frequency`, `Title`,  `ACOUST_ANA_DESCR`, `DESCRIPTION`, and `COMMENTS`
+    
+- Following the procedure in the slides calculate effect size and standard error of the effect size per each study. N.B. we focus on pitch mean and pitch standard deviation.
+ . first try using lmer (to connect to what you know of mixed effects models)
+ . then use rma() (to get some juicy additional statistics)
+
+- Build a forest plot of the results (forest(model))
+ 
+- Go back to Assignment 3, add your own study to the data table, and re-run meta-analysis. Do the results change?
+
+- Now look at the output of rma() and check tau and I2
+
+
