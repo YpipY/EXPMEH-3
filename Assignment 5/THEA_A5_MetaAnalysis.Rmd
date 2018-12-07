@@ -324,13 +324,11 @@ funnel(new_mean_rma, main = "Random-Effects Model: Mean", xlab = "Standardized M
 
 regtest(new_mean_rma)
 ranktest(new_mean_rma)
-summary(new_mean_rma)
+
 
 ```
 
-
-
-Ranktest: Non-significant. This
+Visually inspecting the funnel plot for mean is first of all a bit problematic, due to the very few datapoints. This makes it difficult to conclude on general tendencies. I.e. it would be possible to both the accept and reject symmetry. However, we can inspect it numerically via the ranktest. This in non-significant, and thus points to the fact that there is no obvious publication bias (Kendall's tau = -0.0667, p = 1.0). 
 
 ###Range
 ```{r, echo=TRUE}
@@ -342,7 +340,13 @@ regtest(new_range_rma)
 ranktest(new_range_rma)
 ```
 
-Ranktest: Non-significant
+Inspecting the funnel plot with range it does not look like there is an obvious correlation beteween the datapoints (effect size and SE). However, the influential study: Cohen, 2014, might disturb the interpretation of the plot, as it would change radically wihtout this study. The ranktest is still non-significant (Kendall's tau = -0.2381, p = 0.24).
+
+
+Looking at the range data for Cohen 2014, we find that the standard deviations associated with the range is unlikely small. The data is logtransformed. range_mean_schizo = 3.35, range_sd_schizo = 0.193 and for control range_mean_control = 2.87 , range_sd_control = 0.05. By having so small standard deviations relatively to the mean estimates, the study gets an incredibly high effect size on 3.31. An effect size in that magnitude is highly unlikely. It could suggest an artifact in the data collection.   
+However, apart from the pitch being log-transformed in the Cohen 2014 study, there are no acceptable reasons to exclude the study, as the methods and analyses are congruent with the rest of the studies' we compare it to in the meta-analysis.
+
+
 
 
 ```
