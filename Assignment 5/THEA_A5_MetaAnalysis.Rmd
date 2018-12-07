@@ -1,8 +1,10 @@
 ---
 title: "Assignment 5 - Meta-analysis of pitch in schizophrenia"
-author: "Riccardo Fusaroli"
+author: "Signe Kløve, Thea, and Laurits"
 date: "3/7/2017"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -88,10 +90,6 @@ Again, we cannot be sure whether there is an effect different from zero, as the 
 When looking at study Cohen et al. (2014), we can see that the effect size is much different from the effect sizes observed in the other studies. We will return to this matter, when looking at influential studies.
 
 Here are forest plots presenting the findings:
-
-[INSERT PLOT]
-
-
 #Pitch mean
 ```{r, echo=TRUE}
 
@@ -154,7 +152,13 @@ pred_range = predict(range_model_old, newdata = na.omit(mat_range), allow.new.le
 
 model_pred = cbind(na.omit(model_pred), pred_range)
 
-#plotting
+
+
+```
+
+##Plotting predictions
+
+```{r, echo=TRUE}
 
 plot <- ggplot(na.omit(all_pitch), aes(x = Diagnosis.x, y = mean_f0)) + 
   geom_quasirandom(alpha = 0.5, colour = "dark red") + 
@@ -162,12 +166,10 @@ plot <- ggplot(na.omit(all_pitch), aes(x = Diagnosis.x, y = mean_f0)) +
 
   #geom_boxplot(alpha = 0.5) +p
   geom_point(aes(y = pred_mean), data = na.omit(model_pred), size = 5) +
-  geom_errorbar(aes(y = NULL, ymin = pred_mean-2*pred_sd, ymax = pred_mean+2*pred_sd), data = model_pred, width = .3) +
+  geom_errorbar(aes(y = NULL, ymin = pred_mean-2*pred_range, ymax = pred_mean+2*pred_range), data = model_pred, width = .3) +
   facet_wrap(~Gender) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 plot
-
-
 
 ```
 
@@ -259,7 +261,7 @@ forest(new_range_rma)
 
 #3. Assess the quality of the literature: report and comment on heterogeneity of the studies (tau, I2), on publication bias (funnel plot), and on influential studies.
 
-Tau squared: 
+##Tau squared and I squared: 
 
 
 ```{r, include=FALSE}
@@ -277,10 +279,6 @@ For the mean of f0 the overall variance (τ2) of 0.0510 (SE = 0.0716). Some of t
 For the pitch range the overall variance (τ2) of 1.1934 (SE = 0.4797). Most of the variance (I2: 95.39%) could not be reduced to random sample variability between studies (Q-stats = 165.3459, p-val < .0001). With a significant p-value we can reject the null hypothesis, that the studies show heterogeneity, and we can believe, they all do not come from the same underlying distribution and measure the same effect. 
 Much of the variance from between studies should come from the one outlying study Cohen et al. (2014), which show a much higher effect size (3.31) than the overal mean (-0.24). We will take a closer look at this now.
 
-I squared:
-
-
-
 
 ```{r, include=FALSE}
 summary(new_mean_rma)
@@ -291,45 +289,60 @@ summary(new_range_rma)
 ```
 
 
-#Influential studies mean
+##Influential studies mean
+
 ```{r, echo = TRUE}
 #influential studies
 inf <- influence(new_mean_rma)
 #print(inf)
 plot(inf)
-
-#study 5 is super bad
 ```
 
 Here is shown the most influencial study for the mean of f0, given different measures. We see that study #5 always show up as the most influential study, but as we do not find heterogeneity in the Q-test, we do not find it neccessary to remove potential outliers. 
 
-#Influential studies range
+##Influential studies range
 ```{r, echo=TRUE}
 inf <- influence(new_range_rma)
 #print(inf)
 plot(inf)
+
+
 ```
 
 Here we show the most influential studies from the analysis of pitch range. We see that one study in particular (#17) always show up as very influential. This gives us a clue, that this study probably is not drawn from the same distribution as the other studies. After looking at the description of the study, we do not find any cause for this strong effect. But because we will try to do the meta analysis without this study, and see how this changes our estimated overall effect size.
 
 
-publication bias (funnel plots)
+##Publication bias (funnel plots)
 
+With funnel plots we plot the effect sizes of the studies against their standard error. By doing this we can asess if the unsure studies are the ones with the good results. If this happens to be the case there might be a publication bias in this field of studies, meaning that only the significant findings are published and thereby biasing the literature on the effect that is studied. 
+
+###Mean
 ```{r, echo=TRUE}
 
-
-funnel(new_mean_rma, main = "Random-Effects Model", xlab = "Standardized Mean Difference")
+#mean
+funnel(new_mean_rma, main = "Random-Effects Model: Mean", xlab = "Standardized Mean Difference")
 
 regtest(new_mean_rma)
 ranktest(new_mean_rma)
-
-
-
+summary(new_mean_rma)
 
 ```
 
 
 
+Ranktest: Non-significant. This
+
+###Range
+```{r, echo=TRUE}
+
+#range
+funnel(new_range_rma, main = "Random-Effects Model: Range", xlab = "Standardized Mean Difference")
+
+regtest(new_range_rma)
+ranktest(new_range_rma)
+```
+
+Ranktest: Non-significant
 
 
 ```
