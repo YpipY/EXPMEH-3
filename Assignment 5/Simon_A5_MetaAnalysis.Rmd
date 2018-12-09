@@ -1,0 +1,179 @@
+---
+title: "Assignment 5 - Meta-analysis of pitch in schizophrenia"
+author: "Simon Moeller Nielsen"
+date: "09/12/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Setting WD
+setwd("C:/Users/slmoni/Documents/Uni/Experimental Methods III/EXPMETH3/Assignment 5")
+
+# Loading packages
+library(pacman)
+p_load(tidyverse, metafor, lmerTest, ggbeeswarm)
+
+# Loading data
+data = read.csv("SR_SCHIZO.csv", stringsAsFactors = FALSE)
+```
+
+# Building on the shoulders of giants: meta-analysis
+
+## Questions to be answered
+
+1. What is the current evidence for distinctive patterns of pitch mean and pitch sd in schizophrenia? Report how many papers report quantitative estimates, your method to analyze them, the estimated effect size of the difference (mean effect size and standard error for pitch mean, same for pitch sd) and forest plots representing it. 
+```{r 1}
+## For fundamental frequency matadata
+pitchF0 = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0_SZ_M, m2i=PITCH_F0_HC_M, sd1i=PITCH_F0_SZ_SD, sd2i=PITCH_F0_HC_SD, data = data)
+
+# Calculateing effect size and sd with Lmer
+pitchF0Model = lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=pitchF0, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+summary(pitchF0Model)
+
+# Now using rma
+pitchF0RMA <-rma(yi, vi, data = pitchF0, slab=Article)
+pitchF0RMA
+
+# Forest plot
+forest(pitchF0RMA)
+
+## For range matadata
+pitchSD = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0SD_SZ_M, m2i=PITCH_F0SD_HC_M, sd1i=PITCH_F0SD_SZ_SD, sd2i=PITCH_F0SD_HC_SD, data = data)
+
+# Calculateing effect size and sd with Lmer
+pitchSDModel = lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data=pitchSD, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+summary(pitchSDModel)
+
+# Now using rma
+pitchSDRMA <-rma(yi, vi, data = pitchSD, slab=Article)
+pitchSDRMA
+
+# Forest plot
+forest(pitchSDRMA)
+```
+
+
+2. Do the results match your own analysis from Assignment 3? If you add your results to the meta-analysis, do the estimated effect sizes change? Report the new estimates and the new forest plots.
+```{r 2}
+# Loading data
+pitchData<-read.csv("SimonPitchData.csv")
+
+# Log transforming the data
+pitchData$Mean<-log(pitchData$Mean)
+pitchData$SD<-log(pitchData$SD)
+
+# Standardize the data to cohen's d
+pitchData$Mean<-(pitchData$Mean-mean(pitchData$Mean))/sd(pitchData$Mean)
+pitchData$SD<-(pitchData$SD-mean(pitchData$SD))/sd(pitchData$SD)
+
+# Making the models
+meanModel = glmer(Diagnosis ~ Mean + (1|Subject) + (1|Triangles), data= pitchData, family="binomial")
+SDModel = glmer(Diagnosis ~ SD + (1|Subject) + (1|Triangles), data= pitchData, family="binomial")
+summary(meanModel)
+summary(SDModel)
+
+# Adding assignment 3 results
+data <- rbind(data, rep(NA,length(data)))
+
+data$SAMPLE_SIZE_SZ[56] = 86
+data$SAMPLE_SIZE_HC[56] = 86
+data$Article[56] = "cogsci_fun_with_malte" #good one
+data$StudyID[56] = 49
+data$ArticleID[56] = 47
+data$Year_publication[56] = 2018
+data$Authors[56] = "Simon, Laurits, Osfar, Signe Kløve, and Thea"
+
+pitchData<-read.csv("SimonPitchData.csv")
+
+group_by(pitchData, Diagnosis) %>%
+  summarise(mean(na.omit(Mean)))
+
+group_by(pitchData, Diagnosis) %>%
+  summarise(sd(na.omit(Mean)))
+
+group_by(pitchData, Diagnosis) %>%
+  summarise(mean(na.omit(SD)))
+
+group_by(pitchData, Diagnosis) %>%
+  summarise(sd(na.omit(SD)))
+
+data$PITCH_F0_HC_M[56] = 141
+data$PITCH_F0_HC_SD[56] = 49.2
+data$PITCH_F0_SZ_M[56] = 149
+data$PITCH_F0_SZ_SD[56] = 55.6
+
+data$PITCH_F0SD_HC_M[56] = 25.8
+data$PITCH_F0SD_HC_SD[56] = 18.7
+data$PITCH_F0SD_SZ_M[56] = 22.9
+data$PITCH_F0SD_SZ_SD[56] = 33.0
+
+## Runing the mata analysis again
+## For fundamental frequency matadata
+pitchF0 = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0_SZ_M, m2i=PITCH_F0_HC_M, sd1i=PITCH_F0_SZ_SD, sd2i=PITCH_F0_HC_SD, data = data)
+
+# Now using rma
+pitchF0RMA <-rma(yi, vi, data = pitchF0, slab=Article)
+pitchF0RMA
+
+# Forest plot
+forest(pitchF0RMA)
+
+## For range matadata
+pitchSD = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0SD_SZ_M, m2i=PITCH_F0SD_HC_M, sd1i=PITCH_F0SD_SZ_SD, sd2i=PITCH_F0SD_HC_SD, data = data)
+
+# Now using rma
+pitchSDRMA <-rma(yi, vi, data = pitchSD, slab=Article)
+pitchSDRMA
+
+# Forest plot
+forest(pitchSDRMA)
+
+```
+3. Assess the quality of the literature: report and comment on heterogeneity of the studies (tau, I2), on publication bias (funnel plot), and on influential studies.
+
+```{r 2}
+# Getting the tau and I2 for the mean model
+pitchF0RMA
+
+# Getting the tau and I2 for the SD model
+pitchSDRMA
+
+## Funnel plots
+# For mean model
+funnel(pitchF0RMA, main = "Random-Effects Model: Mean", xlab = "Standardized Mean Difference")
+
+regtest(pitchF0RMA)
+ranktest(pitchF0RMA)
+
+# For SD model
+funnel(pitchSDRMA, main = "Random-Effects Model: SD", xlab = "Standardized Mean Difference")
+
+regtest(pitchSDRMA)
+ranktest(pitchSDRMA)
+
+## Looking at influential studies
+# For the mean model
+infF0 = influence(pitchF0RMA)
+infF0
+plot(infF0)
+# And for the SD model
+infSD = influence(pitchSDRMA)
+infSD
+plot(infSD)
+```
+
+## Tips on the process to follow:
+
+- Download the data on all published articles analyzing pitch in schizophrenia (on gitlab)
+- Look through the dataset to find out which columns to use, and if there is any additional information written as comments (real world data is always messy!).
+    * Hint: Make sure you read the comments in the columns: `pitch_f0_variability`, `frequency`, `Title`,  `ACOUST_ANA_DESCR`, `DESCRIPTION`, and `COMMENTS`
+- Following the procedure in the slides calculate effect size and standard error of the effect size per each study. N.B. we focus on pitch mean and pitch standard deviation.
+ . first try using lmer (to connect to what you know of mixed effects models)
+ . then use rma() (to get some juicy additional statistics)
+
+- Build a forest plot of the results (forest(model))
+ 
+- Go back to Assignment 3, add your own study to the data table, and re-run meta-analysis. Do the results change?
+
+- Now look at the output of rma() and check tau and I2
