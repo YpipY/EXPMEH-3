@@ -132,7 +132,7 @@ forest(pitchSDRMA)
 ```
 3. Assess the quality of the literature: report and comment on heterogeneity of the studies (tau, I2), on publication bias (funnel plot), and on influential studies.
 
-```{r 2}
+```{r 3}
 # Getting the tau and I2 for the mean model
 pitchF0RMA
 
