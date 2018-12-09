@@ -274,9 +274,9 @@ summary(new_range_rma)
 
 ```
 
-For the mean of f0 the overall variance (τ2) of 0.0510 (SE = 0.0716). Some of the variance (I2: 46.30%) could not be reduced to random sample variability between studies (Q-stats = 8.8688, p-val = 0.1144). With an insignificant p-value we cannot reject the null hypothesis, that the studies show heterogeneity, and we can believe, they all come from the same underlying distribution and measure the same effect. 
+For the mean of f0 the overall variance (τ2) is 0.0510 (SE = 0.0716). Some of the variance (I2: 46.30%) could not be reduced to random sample variability between studies (Q-stats = 8.8688, p-val = 0.114). With an insignificant p-value we cannot reject the null hypothesis, that the studies show homogeneity, and we can believe, they all come from the same underlying distribution and measure the same effect. 
 
-For the pitch range the overall variance (τ2) of 1.1934 (SE = 0.4797). Most of the variance (I2: 95.39%) could not be reduced to random sample variability between studies (Q-stats = 165.3459, p-val < .0001). With a significant p-value we can reject the null hypothesis, that the studies show heterogeneity, and we can believe, they all do not come from the same underlying distribution and measure the same effect. 
+For the pitch range the overall variance (τ2) of 1.1934 (SE = 0.4797). Most of the variance (I2: 95.39%) could not be reduced to random sample variability between studies (Q-stats = 165.3459, p-val < .05). With a significant p-value we can reject the null hypothesis, that the studies show homogeneity, and we can believe, they all do not come from the same underlying distribution and measure the same effect. 
 Much of the variance from between studies should come from the one outlying study Cohen et al. (2014), which show a much higher effect size (3.31) than the overal mean (-0.24). We will take a closer look at this now.
 
 
@@ -296,6 +296,7 @@ summary(new_range_rma)
 inf <- influence(new_mean_rma)
 #print(inf)
 plot(inf)
+
 ```
 
 Here is shown the most influencial study for the mean of f0, given different measures. We see that study #5 always show up as the most influential study, but as we do not find heterogeneity in the Q-test, we do not find it neccessary to remove potential outliers. 
@@ -343,15 +344,68 @@ ranktest(new_range_rma)
 Inspecting the funnel plot with range it does not look like there is an obvious correlation beteween the datapoints (effect size and SE). However, the influential study: Cohen, 2014, might disturb the interpretation of the plot, as it would change radically wihtout this study. The ranktest is still non-significant (Kendall's tau = -0.2381, p = 0.24).
 
 
-Looking at the range data for Cohen 2014, we find that the standard deviations associated with the range is unlikely small. The data is logtransformed. range_mean_schizo = 3.35, range_sd_schizo = 0.193 and for control range_mean_control = 2.87 , range_sd_control = 0.05. By having so small standard deviations relatively to the mean estimates, the study gets an incredibly high effect size on 3.31. An effect size in that magnitude is highly unlikely. It could suggest an artifact in the data collection.   
-However, apart from the pitch being log-transformed in the Cohen 2014 study, there are no acceptable reasons to exclude the study, as the methods and analyses are congruent with the rest of the studies' we compare it to in the meta-analysis.
+Looking at the range data for Cohen 2014, we find that the standard deviations associated with the range is unlikely small. The data is logtransformed. range_mean_schizo = 3.35, range_sd_schizo = 0.193 and for control range_mean_control = 2.87 , range_sd_control = 0.05. By having so small standard deviations relatively to the mean estimates, the study gets an incredibly high effect size on 3.31. An effect size in that magnitude is highly unlikely. It could suggest an artifact in the data collection. Looking into the description of the study, there is a problem with how the sd was measured. They measured sd within each single utterance resultning in a very low sd. This method is different from the other studies we compare, showing that they don't measure the same thing. 
 
+Therefore, we exclude the study and run the analysis again. 
 
+```{r, include=FALSE}
 
+data_cohen_exclude <- data[-c(17), ]
+
+#range
+newest_PitchRange = escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0SD_SZ_M, m2i=PITCH_F0SD_HC_M, sd1i=PITCH_F0SD_SZ_SD, sd2i=PITCH_F0SD_HC_SD, data = data_cohen_exclude)
+
+newest_range_rma <- rma(yi, vi, data = newest_PitchRange, slab=Article)
 
 ```
 
+#Updated forest plot of range
+```{r, echo=TRUE}
+forest(newest_range_rma)
+```
 
+Now there seems to be an actual effect detected, since the confidence intervals do not cross zero.
+
+#Updated plot of influential studies
+```{r, echo=TRUE}
+summary(newest_range_rma)
+
+```
+
+tau^2 (estimated amount of total heterogeneity): 0.2945 (SE = 0.1427)
+I^2 (total heterogeneity / total variability):   84.13%
+
+For the range of f0 the overall variance (τ2) is 0.2945 (SE = 0.1427). Much of the variance (I2: 84.13%) could not be reduced to random sample variability between studies (Q-stats = 61.0494, p-val < .05). With a significant p-value we can reject the null hypothesis, that the studies show homogeneity, and we cannnot believe, they all come from the same underlying distribution nor measure the same effect. 
+
+
+```{r}
+inf <- influence(newest_range_rma)
+plot(inf)
+```
+
+Now there are no studies that seem radically inappropriate in this meta-study.
+
+
+#Updated funnel plot
+```{r, echo=TRUE}
+funnel(newest_range_rma, main = "Random-Effects Model: Range without Cohen2014", xlab = "Standardized Mean Difference")
+
+regtest(newest_range_rma)
+ranktest(newest_range_rma)
+```
+
+However, the datapoints in the funnel plot looks correlated now.
+The numerical inspection suggests a publication bias (Kendall's tau = -0.4286, p = 0.0356)
+
+
+#Conclusion
+Meta-analysis of mean
+
+Based on this meta-analysis we found no effect of pitch mean between schizofrenia and control group as the confidence intervals cross zero (0.24[-0.12,0.59]). This is also the case, when adding our cogsci to the analysis, however it gets closer to not crossing zero (0.25[-0.02,0.52]) . This suggest that more data is needed to assess whether the effect is real. 
+
+Meta-analysis of pitch range 
+
+In the meta-analysis of pitch range we found no effect (-0.23[-0.84,0.39]), when looking at all the studies, also when adding our cogsci study. Only if we remove the outlier Cohen 2014, do we find a significant effect (-0.47[-0.78,-0.15]). We do not have any really good reasons for removing this study, other than the effect size of 3.3 being alarmingly large and them measuring on a word level rather than whole sentences. We should probably trust the analysis without Cohen 2014 more, as it reflects most of the literature, but further investigations are required to conclude anything with certainty. 
 
 ## Tips on the process to follow:
 
@@ -369,7 +423,5 @@ However, apart from the pitch being log-transformed in the Cohen 2014 study, the
 - Go back to Assignment 3, add your own study to the data table, and re-run meta-analysis. Do the results change?
 
 - Now look at the output of rma() and check tau and I2
-
-
 
 
