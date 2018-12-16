@@ -11,18 +11,109 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Building on the shoulders of giants: meta-analysis
 
+
+```{r}
+#knitr::opts_knit$set(root.dir = normalizePath("/Users/signeklovekjaer/Documents/CognitiveScience/3.semester/Experimental methods 3/EXPMETH3/Assignment 5"))
+
+
+library(pacman)
+p_load(tidyverse)
+library(metafor)
+library(lme4)
+
+
+data <- read.csv("SR_SCHIZO.csv")
+
+colnames(data)
+```
+
+f0 - fundamental frequency (mean and standard deviation = two measures) --> a measure to describe pitch range
+
+
+The search terms used were (prosody OR inflection OR intensity OR pitch OR fundamental frequency OR speech rate OR voice quality OR acoustic OR intonation OR vocal) AND (schizo*)
+
+
+Pitch mean predicted by diagnosis (from assignment 3)
+- Get the predictions from this model to have partial pooling
+- Use predict() function
+- Use distinct function to make dataframe --> all combinations of diagnosis and study
+- Thereby getting the best description of the means 
+- can specify re.form = NA --> tells R to ignore random effect, instead sometimes a better idea to do: allow.new.levels
+- Can use it to make barplots, compare
+
+
+
 ## Questions to be answered
 
 1. What is the current evidence for distinctive patterns of pitch mean and pitch sd in schizophrenia? Report how many papers report quantitative estimates, your method to analyze them, the estimated effect size of the difference (mean effect size and standard error for pitch mean, same for pitch sd) and forest plots representing it. 
 
+Calculating effect sizes (Cohen’s d)
+
+
+
+
+```{r}
+
+#pitch mean
+PitchMean <- escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0_SZ_M, m2i=PITCH_F0_HC_M, sd1i=PITCH_F0_SZ_SD, sd2i=PITCH_F0_HC_SD, data = data)
+
+
+colnames(data)
+
+ModelMean <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data = PitchMean, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+
+summary(ModelMean)
+
+
+#pitch range
+PitchRange <- escalc('SMD', n1i=SAMPLE_SIZE_SZ, n2i=SAMPLE_SIZE_HC, m1i=PITCH_F0SD_SZ_M, m2i=PITCH_F0SD_HC_M, sd1i=PITCH_F0SD_SZ_SD, sd2i=PITCH_F0SD_HC_SD, data = data)
+
+
+ModelRange <- lmer(yi ~ 1 + (1 | StudyID), weights = 1/vi, data = PitchRange, control=lmerControl(check.nobs.vs.nlev="ignore", check.nobs.vs.nRE="ignore"))
+
+summary(ModelMean)
+
+
+#create a forest plot and use main method which is used for meta-analysis
+
+ModelMeanrma <- rma(yi, vi, data = PitchMean, slab=Article)
+forest(ModelMeanrma)
+
+
+ModelRangerma <- rma(yi, vi, data = PitchRange, slab=Article)
+forest(ModelRangerma)
+
+```
+
+We looked in the following columns for comments on the study:  `pitch_f0_variability`, `frequency`, `Title`,  `ACOUST_ANA_DESCR`, `DESCRIPTION`, and `COMMENTS`
+
+```{r}
+#Meaux et al. (2018)_2
+#Meaux et al. (2018)_1
+PitchRange[55,] 
+#large sample sizes, patient = 309, control = 1350
+#standard deviation of the fundamental frequency averaged\nacross utterance
+
+
+```
+
+
+
 2. Do the results match your own analysis from Assignment 3? If you add your results to the meta-analysis, do the estimated effect sizes change? Report the new estimates and the new forest plots.
+
+```{r}
+data[5,]
+```
+
+
+
 
 3. Assess the quality of the literature: report and comment on heterogeneity of the studies (tau, I2), on publication bias (funnel plot), and on influential studies.
 
 ## Tips on the process to follow:
 
 - Download the data on all published articles analyzing pitch in schizophrenia (on gitlab)
-- Look through the dataset to find out which columns to use, and if there is any additional information written as comments (real world data is always messy!).
+- Look through the dataset to find out which columns to use, and if there is any additional information written as comments (real world data is always messy!). 
     * Hint: Make sure you read the comments in the columns: `pitch_f0_variability`, `frequency`, `Title`,  `ACOUST_ANA_DESCR`, `DESCRIPTION`, and `COMMENTS`
 - Following the procedure in the slides calculate effect size and standard error of the effect size per each study. N.B. we focus on pitch mean and pitch standard deviation.
  . first try using lmer (to connect to what you know of mixed effects models)
