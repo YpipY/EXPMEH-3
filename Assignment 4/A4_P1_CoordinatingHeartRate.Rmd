@@ -1,7 +1,7 @@
 ---
 title: "Assignment 4 - Coordinating Heart Rate"
 author: "Simon Moeller Nielsen"
-date: "16/11 2018"
+date: "09/12/2018"
 output: html_document
 ---
 
@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Loading packages
 library(pacman)
-p_load(gridExtra,lmerTest,evobiR,dplyr,stringr,dotCall64,crqa,zoo,tidyverse)
+p_load(gridExtra,lmerTest,evobiR,dplyr,stringr,dotCall64,crqa,zoo,tidyverse,ggplot2,Hmisc)
 ```
 
 ## Analysing Heart Rate and Respiration data
@@ -52,26 +52,26 @@ NB: For this exercise, you will need to do something very similiar to what you'v
 
 ex = read.csv("Assignment 4/data/CleanData/Study1_G1_T1_Synchronous.csv")
 
-plot(ex$time,ex$Resp1)
-plot(ex$time,ex$Resp2)
+#plot(ex$time,ex$Resp1)
+#plot(ex$time,ex$Resp2)
 
-grid.arrange(plot1, plot2, ncol=2)
+#grid.arrange(plot1, plot2, ncol=2)
 
 
 
-ex$time 
+#ex$time 
 
-data.frame(Matrix(ncol = ))
+#data.frame(Matrix(ncol = ))
 
-colnames(ex)
+#colnames(ex)
 
-ex['time']
+#ex['time']
 
-for (col in colnames(ex)) {
-  print(col)
-}
+#for (col in colnames(ex)) {
+# print(col)
+#}
 
-ex[[1]]
+#ex[[1]]
 ```
 
 
@@ -101,7 +101,7 @@ clean_file = function(filename) {
     
     currentData[[col]] = scale(currentData[[col]]) # Scaling
   }
-  
+
   #isBig=length(colnames(currentData))
   
   crap<-dplyr::select(currentData,"Marker",'ReadingStart','ReadingStop') 
@@ -193,7 +193,7 @@ for (i in seq(1,length(data))) {
 }
 
 colnames(ans) = c("index","respRadius","respEmddim","respDelay","HRRadius","HREmddim","HRDelay")
-i
+
 ```
 
 
@@ -451,6 +451,7 @@ for (col in colnames(truePairs[3:11])) {
 ```
 
 ```{r lmer test}
+
 truePairs$Baseline = "real"
 pairsShuffled$Baseline = "shuffle"
 surrogatePairs$Baseline = "surrogate"
@@ -465,7 +466,6 @@ truePairs$Condition<-as.character(truePairs$Condition)
 surrogatePairs$Condition<-as.character(surrogatePairs$Condition)
 
 allData = rbind(truePairs, pairsShuffled, surrogatePairs)
-
 
 #RR
 RR_HR_model = lm(RR.HR ~ Condition * Baseline, allData)
@@ -482,25 +482,25 @@ DET_RE_model = lm(DET.RE ~ Condition * Baseline, allData)
 summary(DET_RE_model)
 
 #MaxL
-MaxL_HR_model = lm(MaxL.HR ~ Condition * Baseline, allData)
-summary(DET_HR_model)
+MaxL_HR_model = lm(maxL.HR ~ Condition * Baseline, allData)
+summary(MaxL_HR_model)
 
-MaxL_RE_model = lm(MaxL.RE ~ Condition * Baseline, allData)
-summary(DET_RE_model)
+MaxL_RE_model = lm(maxL.RE ~ Condition * Baseline, allData)
+summary(MaxL_RE_model)
 
 #L
 L_HR_model = lm(L.HR ~ Condition * Baseline, allData)
-summary(DET_HR_model)
+summary(L_HR_model)
 
 L_RE_model = lm(L.RE ~ Condition * Baseline, allData)
-summary(DET_RE_model)
+summary(L_RE_model)
 
 #TT
 TT_HR_model = lm(TT.HR ~ Condition * Baseline, allData)
-summary(DET_HR_model)
+summary(TT_HR_model)
 
 TT_RE_model = lm(TT.RE ~ Condition * Baseline, allData)
-summary(DET_RE_model)
+summary(TT_RE_model)
 ```
 ### Testing effects of conditions
  - make a (probably underpowered) mixed model testing effects of the different conditions on heart rate and respiration coordination
@@ -567,3 +567,26 @@ summary(TT_HR_model)
 ```
  - describe how you would test those.
  - Optional: run the models and report them
+ 
+```{r plots}
+?ggplot
+
+write.csv(allData,file='allData.csv')
+maybe<-read.csv('allData.csv')
+
+line_plot <- ggplot(allData, aes(Baseline,TT.RE, color = Condition)) 
+line_plot + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line",aes(group = Condition)) + 
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2, aes(group = Condition)) + 
+  scale_color_manual(values=c("goldenrod1","dodgerblue", "red"))+
+  labs(title = "Respiration TT")
+
+
+line_plot <- ggplot(allData, aes(Baseline,L.RE, color = Condition)) 
+line_plot + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line",aes(group = Condition)) + 
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2, aes(group = Condition)) + 
+  scale_color_manual(values=c("goldenrod1","dodgerblue", "red"))
+```
